@@ -221,159 +221,117 @@ function fmtCountdown(ms) {
 }
 
 // ==========================================================================
-// 4. BUILD CARD-BASED SCHEDULE
+// 4. FLATTEN SCHEDULE INTO A CHRONOLOGICAL SESSION LIST
 // ==========================================================================
+// Instead of rendering full race weekends, every session across every GP is
+// flattened into one sorted timeline. From that timeline we derive exactly
+// what's live right now and exactly one "next up" session.
 
-let firstActiveGpIndex = -1;
+const allSessions = f1Schedule2026
+  .flatMap(gp => Object.entries(gp.sessions).map(([name, utc]) => ({
+    gp,
+    name,
+    utc,
+    time: new Date(utc).getTime(),
+    country: gp.country,
+    track: gp.track,
+    flag: countryFlags[gp.country] || 'un'
+  })))
+  .sort((a, b) => a.time - b.time);
 
-function buildSchedule() {
-  const container = document.getElementById('schedule-scroll');
-  container.innerHTML = '';
-  const now = Date.now();
-
-  f1Schedule2026.forEach((gp, idx) => {
-    const raceEnd = new Date(gp.sessions["Race"]).getTime() + 3 * 3600000;
-    const isPast = now >= raceEnd;
-
-    if (!isPast && firstActiveGpIndex === -1) {
-      firstActiveGpIndex = idx;
-    }
-
-    const card = document.createElement('div');
-    card.className = 'gp-card';
-    card.id = `gp-card-${idx}`;
-    if (isPast) card.classList.add('past-gp');
-    if (firstActiveGpIndex === idx) card.classList.add('active-gp');
-
-    // Header: title left, flag right
-    const header = document.createElement('div');
-    header.className = 'gp-card-header';
-
-    const titleBlock = document.createElement('div');
-    titleBlock.className = 'gp-card-title';
-    titleBlock.innerHTML = `
-      <div class="gp-country">${gp.country} Grand Prix</div>
-      <div class="gp-track">${gp.track}</div>
-      <div class="gp-meta">
-        <span class="gp-round">R${gp.round}</span>
-        <span class="gp-format-badge ${gp.format}">${gp.format}</span>
-      </div>
-    `;
-
-    const flag = document.createElement('img');
-    flag.className = 'gp-flag';
-    flag.src = `https://flagcdn.com/${countryFlags[gp.country] || 'un'}.svg`;
-    flag.alt = gp.country;
-    flag.loading = 'lazy';
-
-    header.append(titleBlock, flag);
-    card.appendChild(header);
-
-    // Sessions
-    const sessionList = document.createElement('div');
-    sessionList.className = 'session-list';
-
-    Object.entries(gp.sessions).forEach(([sessionName, utc]) => {
-      const row = document.createElement('div');
-      row.className = 'session-row';
-      row.dataset.utc = utc;
-      row.dataset.sessionName = sessionName;
-      row.dataset.country = gp.country;
-      row.dataset.track = gp.track;
-      row.dataset.flag = countryFlags[gp.country] || 'un';
-
-      row.innerHTML = `
-        <span class="s-name">${sessionName}</span>
-        <div class="s-right">
-          <span class="s-time">${fmtLocal(utc)}</span>
-          <span class="s-countdown">--:--:--</span>
-        </div>
-      `;
-
-      sessionList.appendChild(row);
-    });
-
-    card.appendChild(sessionList);
-    container.appendChild(card);
-  });
+function flagUrl(code) {
+  return `https://flagcdn.com/${code || 'un'}.svg`;
 }
 
 // ==========================================================================
-// 5. COUNTDOWN TICKER + NEXT SESSION IN CLOCK
+// 5. LIVE & UPCOMING PANEL + CENTER "NEXT EVENT" CARD
 // ==========================================================================
+
+const liveBlockEl = document.getElementById('live-block');
+const upcomingBlockEl = document.getElementById('upcoming-block');
+const seasonCompleteBlockEl = document.getElementById('season-complete-block');
+
+const liveFlagEl = document.getElementById('live-flag');
+const liveCountryEl = document.getElementById('live-country');
+const liveTrackEl = document.getElementById('live-track');
+const liveSessionNameEl = document.getElementById('live-session-name');
+const liveLocalTimeEl = document.getElementById('live-local-time');
+const liveProgressFillEl = document.getElementById('live-progress-fill');
+
+const upFlagEl = document.getElementById('up-flag');
+const upCountryEl = document.getElementById('up-country');
+const upTrackEl = document.getElementById('up-track');
+const upSessionNameEl = document.getElementById('up-session-name');
+const upLocalTimeEl = document.getElementById('up-local-time');
+const upDEl = document.getElementById('up-d');
+const upHEl = document.getElementById('up-h');
+const upMEl = document.getElementById('up-m');
+const upSEl = document.getElementById('up-s');
 
 function tickCountdowns() {
   const now = Date.now();
-  const rows = document.querySelectorAll('.session-row');
-  const nextMap = {};
-  let globalNext = null; // track the absolute next session for clock display
 
-  rows.forEach(row => {
-    const sessionTime = new Date(row.dataset.utc).getTime();
-    const diff = sessionTime - now;
-    const duration = sessionDurationMs(row.dataset.sessionName);
-    const cdEl = row.querySelector('.s-countdown');
+  // A session is "live" while now falls within [start, start + duration).
+  const liveSession = allSessions.find(s => now >= s.time && now < s.time + sessionDurationMs(s.name));
+  // The very next session on the calendar that hasn't started yet.
+  const upcomingSession = allSessions.find(s => s.time > now);
 
-    row.classList.remove('completed', 'live-now', 'next-up');
+  // --- LIVE NOW block ---
+  if (liveSession) {
+    liveBlockEl.classList.remove('block-hidden');
+    liveFlagEl.src = flagUrl(liveSession.flag);
+    liveFlagEl.alt = liveSession.country;
+    liveCountryEl.textContent = `${liveSession.country} Grand Prix`;
+    liveTrackEl.textContent = liveSession.track;
+    liveSessionNameEl.textContent = liveSession.name;
+    liveLocalTimeEl.textContent = `Started ${fmtLocalShort(liveSession.utc)}`;
+    const pct = Math.min(100, ((now - liveSession.time) / sessionDurationMs(liveSession.name)) * 100);
+    liveProgressFillEl.style.width = `${pct}%`;
+  } else {
+    liveBlockEl.classList.add('block-hidden');
+  }
 
-    if (diff > 0) {
-      cdEl.textContent = fmtCountdown(diff);
-      const cardId = row.closest('.gp-card').id;
-      if (!nextMap[cardId] || diff < nextMap[cardId].diff) {
-        nextMap[cardId] = { row, diff };
-      }
-      // Track global next
-      if (!globalNext || diff < globalNext.diff) {
-        globalNext = {
-          name: row.dataset.sessionName,
-          country: row.dataset.country,
-          track: row.dataset.track,
-          flag: row.dataset.flag,
-          utc: row.dataset.utc,
-          diff
-        };
-      }
-    } else if (Math.abs(diff) < duration) {
-      cdEl.innerHTML = '<span class="s-live-badge">● LIVE</span>';
-      row.classList.add('live-now');
-      // If something is live, show it in clock
-      if (!globalNext) {
-        globalNext = {
-          name: row.dataset.sessionName,
-          country: row.dataset.country,
-          track: row.dataset.track,
-          flag: row.dataset.flag,
-          utc: row.dataset.utc,
-          diff: 0,
-          live: true
-        };
-      }
-    } else {
-      cdEl.textContent = 'DONE';
-      row.classList.add('completed');
-    }
-  });
+  // --- UPCOMING block (exactly one session) ---
+  if (upcomingSession) {
+    upcomingBlockEl.classList.remove('block-hidden');
+    seasonCompleteBlockEl.classList.add('block-hidden');
 
-  Object.values(nextMap).forEach(({ row }) => {
-    const card = row.closest('.gp-card');
-    if (!card.querySelector('.live-now')) {
-      row.classList.add('next-up');
-    }
-  });
+    upFlagEl.src = flagUrl(upcomingSession.flag);
+    upFlagEl.alt = upcomingSession.country;
+    upCountryEl.textContent = `${upcomingSession.country} Grand Prix`;
+    upTrackEl.textContent = upcomingSession.track;
+    upSessionNameEl.textContent = upcomingSession.name;
+    upLocalTimeEl.textContent = fmtLocal(upcomingSession.utc);
 
-  // Update the informative upcoming event card
-  if (globalNext) {
-    nextNameEl.textContent = globalNext.name;
-    nextCircuitEl.textContent = globalNext.track;
-    nextFlagEl.src = `https://flagcdn.com/${globalNext.flag}.svg`;
-    nextFlagEl.alt = globalNext.country;
-    nextTimeEl.textContent = fmtLocalShort(globalNext.utc);
+    const diff = upcomingSession.time - now;
+    const totalSec = Math.max(0, Math.floor(diff / 1000));
+    upDEl.textContent = String(Math.floor(totalSec / 86400)).padStart(2, '0');
+    upHEl.textContent = String(Math.floor(totalSec / 3600) % 24).padStart(2, '0');
+    upMEl.textContent = String(Math.floor(totalSec / 60) % 60).padStart(2, '0');
+    upSEl.textContent = String(totalSec % 60).padStart(2, '0');
+  } else if (!liveSession) {
+    // Nothing live and nothing upcoming -> season complete.
+    upcomingBlockEl.classList.add('block-hidden');
+    seasonCompleteBlockEl.classList.remove('block-hidden');
+  } else {
+    upcomingBlockEl.classList.add('block-hidden');
+  }
 
-    if (globalNext.live) {
-      nextCountdownEl.innerHTML = '<span class="s-live-badge">● LIVE</span>';
-    } else {
-      nextCountdownEl.textContent = fmtCountdown(globalNext.diff);
-    }
+  // --- Center clock's informative "next event" card ---
+  if (liveSession) {
+    nextNameEl.textContent = liveSession.name;
+    nextCircuitEl.textContent = liveSession.track;
+    nextFlagEl.src = flagUrl(liveSession.flag);
+    nextFlagEl.alt = liveSession.country;
+    nextTimeEl.textContent = fmtLocalShort(liveSession.utc);
+    nextCountdownEl.innerHTML = '<span class="s-live-badge">● LIVE</span>';
+  } else if (upcomingSession) {
+    nextNameEl.textContent = upcomingSession.name;
+    nextCircuitEl.textContent = upcomingSession.track;
+    nextFlagEl.src = flagUrl(upcomingSession.flag);
+    nextFlagEl.alt = upcomingSession.country;
+    nextTimeEl.textContent = fmtLocalShort(upcomingSession.utc);
+    nextCountdownEl.textContent = fmtCountdown(upcomingSession.time - now);
   } else {
     nextNameEl.textContent = 'Season Complete';
     nextCircuitEl.textContent = 'See you in 2027';
@@ -410,7 +368,11 @@ function extractRgb(c) {
   return [175, 105, 239];
 }
 
+let currentPrimaryColor = '#AF69EF';
+let currentMediaAccent = null; // 'spotify' | 'youtube' | 'discord' | null
+
 function applyColor(hex) {
+  currentPrimaryColor = hex;
   document.documentElement.style.setProperty('--primary-color', hex);
   const rgb = extractRgb(hex);
   document.documentElement.style.setProperty('--primary-color-rgb', rgb.join(', '));
@@ -419,6 +381,14 @@ function applyColor(hex) {
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.classList.toggle('active', sw.dataset.hex.toLowerCase() === hex.toLowerCase());
   });
+
+  // Re-sync visualizer accent in case it's currently on the default fallback.
+  refreshVisualizerAccent();
+}
+
+function refreshVisualizerAccent() {
+  const col = currentMediaAccent ? mediaAccentColors[currentMediaAccent] : currentPrimaryColor;
+  document.documentElement.style.setProperty('--visualizer-color', col);
 }
 
 function buildSwatches() {
@@ -437,6 +407,33 @@ function buildSwatches() {
 // ==========================================================================
 // 7. MEDIA PLAYER (Wallpaper Engine)
 // ==========================================================================
+
+// The Web media integration API only exposes text fields (title, artist,
+// subTitle, albumTitle, albumArtist, genres) - there's no explicit "source
+// app" field. We detect the active app by scanning those strings for
+// recognizable keywords, then color the visualizer accordingly.
+const mediaAccentColors = {
+  spotify: '#1DB954',
+  youtube: '#FF0000',
+  discord: '#5865F2'
+};
+
+function detectMediaSource(event) {
+  const haystack = [
+    event.title, event.artist, event.subTitle,
+    event.albumTitle, event.albumArtist, event.genres
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (haystack.includes('discord')) return 'discord';
+  if (haystack.includes('spotify')) return 'spotify';
+  if (haystack.includes('youtube')) return 'youtube';
+  return null;
+}
+
+function applyVisualizerAccent(source) {
+  currentMediaAccent = source;
+  refreshVisualizerAccent();
+}
 
 let mediaTL = { pos: 0, dur: 0, paused: true, ts: Date.now() };
 
@@ -466,12 +463,14 @@ function setupMedia() {
         ct.classList.remove('hidden');
         document.getElementById('media-title').textContent = event.title || 'Unknown Track';
         document.getElementById('media-artist').textContent = event.artist || 'Unknown Artist';
+        applyVisualizerAccent(detectMediaSource(event));
       } else {
         pn.classList.add('waiting-media');
         ph.classList.remove('hidden');
         ct.classList.add('hidden');
         mediaTL = { pos: 0, dur: 0, paused: true, ts: Date.now() };
         paintTimeline(0, 0);
+        applyVisualizerAccent(null);
       }
     });
   }
@@ -534,7 +533,7 @@ function drawVisualizer() {
   }
 
   const mid = cvs.width / 2;
-  const col = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#AF69EF';
+  const col = getComputedStyle(document.documentElement).getPropertyValue('--visualizer-color').trim() || '#AF69EF';
   cx.shadowBlur = 12;
   cx.shadowColor = col;
 
@@ -577,6 +576,22 @@ window.wallpaperPropertyListener = {
 };
 
 // ==========================================================================
+// 9b. MOTIF SELECTOR (background texture toggle)
+// ==========================================================================
+
+function setupMotifSelector() {
+  const buttons = document.querySelectorAll('.motif-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const motif = btn.dataset.motif;
+      document.body.classList.remove('motif-clean', 'motif-grid', 'motif-waves');
+      if (motif !== 'clean') document.body.classList.add(`motif-${motif}`);
+      buttons.forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+}
+
+// ==========================================================================
 // 10. BOOT
 // ==========================================================================
 
@@ -586,9 +601,9 @@ setInterval(tickClock, 1000);
 buildSwatches();
 applyColor(themeColors[0].hex);
 
-buildSchedule();
 tickCountdowns();
 setInterval(tickCountdowns, 1000);
 
 setupMedia();
+setupMotifSelector();
 drawVisualizer();

@@ -36,10 +36,62 @@
   <aside class="right-panel glass" id="right-panel">
     <header class="panel-header">
       <span class="panel-title">F1 2026 Calendar</span>
-      <span class="panel-subtitle">Race Weekend Schedule</span>
+      <span class="panel-subtitle">Live &amp; Next Up</span>
     </header>
-    <section class="schedule-scroll" id="schedule-scroll">
-      <!-- Built by script.js -->
+    <section class="schedule-content" id="schedule-content">
+
+      <!-- LIVE NOW block (0..n sessions currently in progress) -->
+      <div class="session-block" id="live-block">
+        <div class="block-label"><span class="pulse-dot"></span>Live Now</div>
+        <div class="session-card live-card" id="live-card">
+          <div class="sc-header">
+            <img class="sc-flag" id="live-flag" src="" alt="">
+            <div class="sc-titles">
+              <div class="sc-country" id="live-country">—</div>
+              <div class="sc-track" id="live-track">—</div>
+            </div>
+            <span class="live-pill">● LIVE</span>
+          </div>
+          <div class="sc-session-name" id="live-session-name">—</div>
+          <div class="sc-time-row">
+            <span class="sc-local-time" id="live-local-time">—</span>
+          </div>
+          <div class="sc-progress-track">
+            <div class="sc-progress-fill" id="live-progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPCOMING block (exactly 1 session: the very next on the calendar) -->
+      <div class="session-block" id="upcoming-block">
+        <div class="block-label">Upcoming</div>
+        <div class="session-card upcoming-card" id="upcoming-card">
+          <div class="sc-header">
+            <img class="sc-flag" id="up-flag" src="" alt="">
+            <div class="sc-titles">
+              <div class="sc-country" id="up-country">—</div>
+              <div class="sc-track" id="up-track">—</div>
+            </div>
+          </div>
+          <div class="sc-session-name" id="up-session-name">—</div>
+          <div class="sc-local-time" id="up-local-time">—</div>
+          <div class="countdown-chips">
+            <div class="chip"><span class="chip-num" id="up-d">00</span><span class="chip-lbl">Days</span></div>
+            <div class="chip"><span class="chip-num" id="up-h">00</span><span class="chip-lbl">Hrs</span></div>
+            <div class="chip"><span class="chip-num" id="up-m">00</span><span class="chip-lbl">Min</span></div>
+            <div class="chip"><span class="chip-num" id="up-s">00</span><span class="chip-lbl">Sec</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Season complete fallback -->
+      <div class="session-block season-complete-block" id="season-complete-block">
+        <div class="session-card">
+          <div class="sc-session-name">Season Complete</div>
+          <div class="sc-local-time">See you in 2027 🏁</div>
+        </div>
+      </div>
+
     </section>
   </aside>
 
@@ -71,6 +123,15 @@
   <div class="color-bar glass" id="color-bar">
     <span class="color-bar-label">Theme</span>
     <div class="color-swatches" id="color-swatches"></div>
+
+    <div class="bar-divider"></div>
+
+    <span class="color-bar-label">Motif</span>
+    <div class="motif-selector" id="motif-selector">
+      <button class="motif-btn active" data-motif="clean" title="Clean">Clean</button>
+      <button class="motif-btn" data-motif="grid" title="Cyber Grid">Cyber Grid</button>
+      <button class="motif-btn" data-motif="waves" title="Soft Waves">Soft Waves</button>
+    </div>
   </div>
 
   <!-- Audio visualizer -->
