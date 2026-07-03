@@ -1,5 +1,6 @@
 /**
- * F1 2026 Dashboard – Full Schedule with Scrollable Sessions
+ * F1 2026 Dashboard – Wallpaper Engine Edition
+ * Card-based schedule, clock with next-session countdown, color picker, media & audio
  */
 
 // ==========================================================================
@@ -149,7 +150,6 @@ const f1Schedule2026 = [
   }
 ];
 
-// Country code mapping for flagcdn.com SVG flags
 const countryFlags = {
   "Great Britain": "gb", "Belgium": "be", "Hungary": "hu",
   "Netherlands": "nl", "Italy": "it", "Spain": "es",
@@ -161,24 +161,29 @@ const countryFlags = {
 // 2. CLOCK
 // ==========================================================================
 
+const clockEl = document.getElementById('digital-clock');
+const dateEl = document.getElementById('date-display');
+const nextNameEl = document.getElementById('next-session-name');
+const nextCountdownEl = document.getElementById('next-session-countdown');
+const nextFlagEl = document.getElementById('next-session-flag');
+const nextCircuitEl = document.getElementById('next-session-circuit');
+const nextTimeEl = document.getElementById('next-session-time');
+
 function tickClock() {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const s = String(now.getSeconds()).padStart(2, '0');
-  document.getElementById('digital-clock').textContent = `${h}:${m}:${s}`;
-
-  const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  document.getElementById('date-display').textContent = now.toLocaleDateString(undefined, opts);
+  clockEl.textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+  dateEl.textContent = now.toLocaleDateString(undefined, {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 }
 
 // ==========================================================================
-// 3. FORMAT HELPERS
+// 3. HELPERS
 // ==========================================================================
 
-/**
- * Format a UTC ISO string into localised display: "Fri, Jul 3, 06:30 PM"
- */
 function fmtLocal(utc) {
   const d = new Date(utc);
   const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -186,192 +191,258 @@ function fmtLocal(utc) {
   let h = d.getHours();
   const ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${h}:${min} ${ampm}`;
+  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${h}:${String(d.getMinutes()).padStart(2,'0')} ${ampm}`;
 }
 
-/**
- * Typical F1 session durations (ms) for LIVE detection
- */
+function fmtLocalShort(utc) {
+  const d = new Date(utc);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${months[d.getMonth()]} ${d.getDate()} · ${h}:${String(d.getMinutes()).padStart(2,'0')} ${ampm}`;
+}
+
 function sessionDurationMs(name) {
   const n = name.toLowerCase();
-  if (n.includes('race'))   return 2.5 * 3600000;
+  if (n.includes('race')) return 2.5 * 3600000;
   if (n.includes('sprint') && !n.includes('qualifying')) return 3600000;
   return 1.5 * 3600000;
 }
 
-/**
- * Countdown text from milliseconds
- */
 function fmtCountdown(ms) {
   const totalSec = Math.floor(ms / 1000);
   const sec = totalSec % 60;
   const min = Math.floor(totalSec / 60) % 60;
   const hr  = Math.floor(totalSec / 3600) % 24;
   const day = Math.floor(totalSec / 86400);
-
   if (day > 0) return `${day}d ${String(hr).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   return `${String(hr).padStart(2,'0')}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
 }
 
 // ==========================================================================
-// 4. BUILD FULL SCHEDULE DOM
+// 4. BUILD CARD-BASED SCHEDULE
 // ==========================================================================
 
-let firstActiveGpIndex = -1;  // The index of the soonest GP that isn't fully over
+let firstActiveGpIndex = -1;
 
 function buildSchedule() {
   const container = document.getElementById('schedule-scroll');
   container.innerHTML = '';
-  const now = new Date();
+  const now = Date.now();
 
-  f1Schedule2026.forEach((gp, gpIdx) => {
-    // Check if whole GP weekend is in the past
+  f1Schedule2026.forEach((gp, idx) => {
     const raceEnd = new Date(gp.sessions["Race"]).getTime() + 3 * 3600000;
-    const isPast = now.getTime() >= raceEnd;
+    const isPast = now >= raceEnd;
 
     if (!isPast && firstActiveGpIndex === -1) {
-      firstActiveGpIndex = gpIdx;
+      firstActiveGpIndex = idx;
     }
 
-    // GP block wrapper
-    const block = document.createElement('div');
-    block.className = 'gp-block';
-    block.id = `gp-block-${gpIdx}`;
-    if (isPast) block.classList.add('past-gp');
+    const card = document.createElement('div');
+    card.className = 'gp-card';
+    card.id = `gp-card-${idx}`;
+    if (isPast) card.classList.add('past-gp');
+    if (firstActiveGpIndex === idx) card.classList.add('active-gp');
 
-    // Header: Flag + Country/Track + Round + Format badge
+    // Header: title left, flag right
     const header = document.createElement('div');
-    header.className = 'gp-header';
+    header.className = 'gp-card-header';
+
+    const titleBlock = document.createElement('div');
+    titleBlock.className = 'gp-card-title';
+    titleBlock.innerHTML = `
+      <div class="gp-country">${gp.country} Grand Prix</div>
+      <div class="gp-track">${gp.track}</div>
+      <div class="gp-meta">
+        <span class="gp-round">R${gp.round}</span>
+        <span class="gp-format-badge ${gp.format}">${gp.format}</span>
+      </div>
+    `;
 
     const flag = document.createElement('img');
     flag.className = 'gp-flag';
     flag.src = `https://flagcdn.com/${countryFlags[gp.country] || 'un'}.svg`;
     flag.alt = gp.country;
-    flag.crossOrigin = 'anonymous';
+    flag.loading = 'lazy';
 
-    const info = document.createElement('div');
-    info.className = 'gp-info';
-    const country = document.createElement('div');
-    country.className = 'gp-country';
-    country.textContent = gp.country;
-    const track = document.createElement('div');
-    track.className = 'gp-track';
-    track.textContent = gp.track;
-    info.appendChild(country);
-    info.appendChild(track);
+    header.append(titleBlock, flag);
+    card.appendChild(header);
 
-    const format = document.createElement('span');
-    format.className = `gp-format ${gp.format}`;
-    format.textContent = gp.format;
+    // Sessions
+    const sessionList = document.createElement('div');
+    sessionList.className = 'session-list';
 
-    const round = document.createElement('span');
-    round.className = 'gp-round';
-    round.textContent = `R${gp.round}`;
-
-    header.appendChild(flag);
-    header.appendChild(info);
-    header.appendChild(format);
-    header.appendChild(round);
-    block.appendChild(header);
-
-    // Session rows — iterate the sessions object to preserve order
     Object.entries(gp.sessions).forEach(([sessionName, utc]) => {
       const row = document.createElement('div');
       row.className = 'session-row';
       row.dataset.utc = utc;
       row.dataset.sessionName = sessionName;
+      row.dataset.country = gp.country;
+      row.dataset.track = gp.track;
+      row.dataset.flag = countryFlags[gp.country] || 'un';
 
-      const name = document.createElement('span');
-      name.className = 's-name';
-      name.textContent = sessionName;
+      row.innerHTML = `
+        <span class="s-name">${sessionName}</span>
+        <div class="s-right">
+          <span class="s-time">${fmtLocal(utc)}</span>
+          <span class="s-countdown">--:--:--</span>
+        </div>
+      `;
 
-      const time = document.createElement('span');
-      time.className = 's-time';
-      time.textContent = fmtLocal(utc);
-
-      const cd = document.createElement('span');
-      cd.className = 's-countdown';
-      cd.textContent = '---';
-
-      row.appendChild(name);
-      row.appendChild(time);
-      row.appendChild(cd);
-      block.appendChild(row);
+      sessionList.appendChild(row);
     });
 
-    container.appendChild(block);
+    card.appendChild(sessionList);
+    container.appendChild(card);
   });
-
-  // Auto-scroll to the first active GP so the user sees what's relevant
-  if (firstActiveGpIndex !== -1) {
-    const el = document.getElementById(`gp-block-${firstActiveGpIndex}`);
-    if (el) {
-      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
-    }
-  }
 }
 
 // ==========================================================================
-// 5. LIVE COUNTDOWN TICKER (runs every second)
+// 5. COUNTDOWN TICKER + NEXT SESSION IN CLOCK
 // ==========================================================================
 
 function tickCountdowns() {
-  const now = new Date();
+  const now = Date.now();
   const rows = document.querySelectorAll('.session-row');
-
-  // Per GP block, track which row is the closest upcoming
   const nextMap = {};
+  let globalNext = null; // track the absolute next session for clock display
 
   rows.forEach(row => {
-    const utc = row.dataset.utc;
-    const sessionName = row.dataset.sessionName;
-    const sessionTime = new Date(utc).getTime();
-    const diff = sessionTime - now.getTime();
-    const duration = sessionDurationMs(sessionName);
+    const sessionTime = new Date(row.dataset.utc).getTime();
+    const diff = sessionTime - now;
+    const duration = sessionDurationMs(row.dataset.sessionName);
     const cdEl = row.querySelector('.s-countdown');
 
-    // Reset classes
     row.classList.remove('completed', 'live-now', 'next-up');
 
     if (diff > 0) {
-      // Future session
       cdEl.textContent = fmtCountdown(diff);
-
-      // Track closest upcoming per parent gp-block
-      const blockId = row.closest('.gp-block').id;
-      if (!nextMap[blockId] || diff < nextMap[blockId].diff) {
-        nextMap[blockId] = { row, diff };
+      const cardId = row.closest('.gp-card').id;
+      if (!nextMap[cardId] || diff < nextMap[cardId].diff) {
+        nextMap[cardId] = { row, diff };
       }
-    } else if (diff <= 0 && Math.abs(diff) < duration) {
-      // Currently LIVE
+      // Track global next
+      if (!globalNext || diff < globalNext.diff) {
+        globalNext = {
+          name: row.dataset.sessionName,
+          country: row.dataset.country,
+          track: row.dataset.track,
+          flag: row.dataset.flag,
+          utc: row.dataset.utc,
+          diff
+        };
+      }
+    } else if (Math.abs(diff) < duration) {
       cdEl.innerHTML = '<span class="s-live-badge">● LIVE</span>';
       row.classList.add('live-now');
+      // If something is live, show it in clock
+      if (!globalNext) {
+        globalNext = {
+          name: row.dataset.sessionName,
+          country: row.dataset.country,
+          track: row.dataset.track,
+          flag: row.dataset.flag,
+          utc: row.dataset.utc,
+          diff: 0,
+          live: true
+        };
+      }
     } else {
-      // Completed
       cdEl.textContent = 'DONE';
       row.classList.add('completed');
     }
   });
 
-  // Highlight the closest upcoming session per GP (only if no live session in that GP)
   Object.values(nextMap).forEach(({ row }) => {
-    const block = row.closest('.gp-block');
-    if (!block.querySelector('.live-now')) {
+    const card = row.closest('.gp-card');
+    if (!card.querySelector('.live-now')) {
       row.classList.add('next-up');
     }
+  });
+
+  // Update the informative upcoming event card
+  if (globalNext) {
+    nextNameEl.textContent = globalNext.name;
+    nextCircuitEl.textContent = globalNext.track;
+    nextFlagEl.src = `https://flagcdn.com/${globalNext.flag}.svg`;
+    nextFlagEl.alt = globalNext.country;
+    nextTimeEl.textContent = fmtLocalShort(globalNext.utc);
+
+    if (globalNext.live) {
+      nextCountdownEl.innerHTML = '<span class="s-live-badge">● LIVE</span>';
+    } else {
+      nextCountdownEl.textContent = fmtCountdown(globalNext.diff);
+    }
+  } else {
+    nextNameEl.textContent = 'Season Complete';
+    nextCircuitEl.textContent = 'See you in 2027';
+    nextCountdownEl.textContent = '—';
+    nextTimeEl.textContent = '';
+    nextFlagEl.removeAttribute('src');
+  }
+}
+
+// ==========================================================================
+// 6. COLOR SWATCHES (7 curated theme colors)
+// ==========================================================================
+
+const themeColors = [
+  { name: 'Purple',   hex: '#AF69EF' },
+  { name: 'Ferrari',  hex: '#FF2D2D' },
+  { name: 'Cyan',     hex: '#22D3EE' },
+  { name: 'Emerald',  hex: '#34D399' },
+  { name: 'Amber',    hex: '#FBBF24' },
+  { name: 'Pink',     hex: '#F472B6' },
+  { name: 'Blue',     hex: '#5B8DEF' }
+];
+
+function extractRgb(c) {
+  if (c.startsWith('rgb')) {
+    const m = c.match(/\d+/g);
+    return m ? m.slice(0, 3).map(Number) : [175, 105, 239];
+  }
+  if (c.startsWith('#')) {
+    let h = c.slice(1);
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  return [175, 105, 239];
+}
+
+function applyColor(hex) {
+  document.documentElement.style.setProperty('--primary-color', hex);
+  const rgb = extractRgb(hex);
+  document.documentElement.style.setProperty('--primary-color-rgb', rgb.join(', '));
+
+  // Update active swatch highlight
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.hex.toLowerCase() === hex.toLowerCase());
+  });
+}
+
+function buildSwatches() {
+  const wrap = document.getElementById('color-swatches');
+  themeColors.forEach(c => {
+    const sw = document.createElement('button');
+    sw.className = 'swatch';
+    sw.style.background = c.hex;
+    sw.dataset.hex = c.hex;
+    sw.title = c.name;
+    sw.addEventListener('click', () => applyColor(c.hex));
+    wrap.appendChild(sw);
   });
 }
 
 // ==========================================================================
-// 6. MEDIA PLAYER
+// 7. MEDIA PLAYER (Wallpaper Engine)
 // ==========================================================================
 
 let mediaTL = { pos: 0, dur: 0, paused: true, ts: Date.now() };
 
 function fmtTime(s) {
   if (isNaN(s) || s < 0) return '0:00';
-  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
 }
 
 function paintTimeline(pos, dur) {
@@ -380,40 +451,47 @@ function paintTimeline(pos, dur) {
   const fill = document.getElementById('media-timeline-fill');
   if (cur) cur.textContent = fmtTime(pos);
   if (tot) tot.textContent = fmtTime(dur);
-  if (fill) fill.style.width = `${dur > 0 ? (pos/dur)*100 : 0}%`;
+  if (fill) fill.style.width = `${dur > 0 ? (pos / dur) * 100 : 0}%`;
 }
 
 function setupMedia() {
-  window.wallpaperRegisterMediaPropertiesListener(e => {
-    const ph = document.getElementById('media-placeholder-id');
-    const ct = document.getElementById('media-content-id');
-    const pn = document.getElementById('media-panel');
-    if (e.title) {
-      pn.classList.remove('waiting-media');
-      ph.classList.add('hidden');
-      ct.classList.remove('hidden');
-      document.getElementById('media-title').textContent = e.title;
-      document.getElementById('media-artist').textContent = e.artist || 'Unknown Artist';
-    } else {
-      pn.classList.add('waiting-media');
-      ph.classList.remove('hidden');
-      ct.classList.add('hidden');
-      mediaTL = { pos:0, dur:0, paused:true, ts:Date.now() };
-      paintTimeline(0, 0);
-    }
-  });
+  if (typeof window.wallpaperRegisterMediaPropertiesListener === 'function') {
+    window.wallpaperRegisterMediaPropertiesListener(function(event) {
+      const ph = document.getElementById('media-placeholder-id');
+      const ct = document.getElementById('media-content-id');
+      const pn = document.getElementById('media-panel');
+      if (event.title) {
+        pn.classList.remove('waiting-media');
+        ph.classList.add('hidden');
+        ct.classList.remove('hidden');
+        document.getElementById('media-title').textContent = event.title || 'Unknown Track';
+        document.getElementById('media-artist').textContent = event.artist || 'Unknown Artist';
+      } else {
+        pn.classList.add('waiting-media');
+        ph.classList.remove('hidden');
+        ct.classList.add('hidden');
+        mediaTL = { pos: 0, dur: 0, paused: true, ts: Date.now() };
+        paintTimeline(0, 0);
+      }
+    });
+  }
 
-  window.wallpaperRegisterMediaThumbnailListener(e => {
-    document.getElementById('media-album-art').src = e.thumbnail || '';
-  });
+  if (typeof window.wallpaperRegisterMediaThumbnailListener === 'function') {
+    window.wallpaperRegisterMediaThumbnailListener(function(event) {
+      const art = document.getElementById('media-album-art');
+      if (art) art.src = event.thumbnail || '';
+    });
+  }
 
-  window.wallpaperRegisterMediaTimelineListener(e => {
-    mediaTL = { pos: e.position, dur: e.duration, paused: e.paused, ts: Date.now() };
-    paintTimeline(e.position, e.duration);
-  });
+  if (typeof window.wallpaperRegisterMediaTimelineListener === 'function') {
+    window.wallpaperRegisterMediaTimelineListener(function(event) {
+      mediaTL = { pos: event.position, dur: event.duration, paused: event.paused, ts: Date.now() };
+      paintTimeline(event.position, event.duration);
+    });
+  }
 }
 
-setInterval(() => {
+setInterval(function() {
   if (mediaTL.dur > 0 && !mediaTL.paused) {
     const elapsed = (Date.now() - mediaTL.ts) / 1000;
     paintTimeline(Math.min(mediaTL.pos + elapsed, mediaTL.dur), mediaTL.dur);
@@ -421,93 +499,96 @@ setInterval(() => {
 }, 250);
 
 // ==========================================================================
-// 7. AUDIO VISUALIZER
+// 8. AUDIO VISUALIZER (Wallpaper Engine)
 // ==========================================================================
 
 const cvs = document.getElementById('audio-visualizer-canvas');
 const cx = cvs.getContext('2d');
-let audioCache = new Array(128).fill(0);
-let smooth = new Array(64).fill(0);
+let audioArray = new Array(128).fill(0);
+let smoothBars = new Array(64).fill(0);
 
-function resizeCvs() { cvs.width = window.innerWidth; cvs.height = 120; }
-window.addEventListener('resize', resizeCvs);
-resizeCvs();
+function resizeCanvas() {
+  cvs.width = window.innerWidth;
+  cvs.height = 120;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-window.wallpaperRegisterAudioListener(a => { audioCache = a; });
+if (typeof window.wallpaperRegisterAudioListener === 'function') {
+  window.wallpaperRegisterAudioListener(function(audioData) {
+    audioArray = audioData;
+  });
+}
 
-function drawVis() {
-  requestAnimationFrame(drawVis);
+function drawVisualizer() {
+  requestAnimationFrame(drawVisualizer);
   cx.clearRect(0, 0, cvs.width, cvs.height);
 
-  const bw = 5, sp = 3, bars = 64, decay = 0.85;
+  const barWidth = 4, spacing = 3, bars = 64, decay = 0.82;
+
   for (let i = 0; i < bars; i++) {
-    let v = ((audioCache[i] + audioCache[i + bars]) / 2) * (1 + (i/bars)*3) * 110;
-    v = Math.min(v, cvs.height - 8);
-    smooth[i] = v > smooth[i] ? v : smooth[i] * decay + v * (1-decay);
+    let val = ((audioArray[i] || 0) + (audioArray[i + 64] || 0)) / 2;
+    val = val * (1 + (i / bars) * 2.5) * 100;
+    val = Math.min(val, cvs.height - 6);
+    smoothBars[i] = val > smoothBars[i] ? val : smoothBars[i] * decay + val * (1 - decay);
   }
 
   const mid = cvs.width / 2;
-  const col = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
-  cx.shadowBlur = 14;
+  const col = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#AF69EF';
+  cx.shadowBlur = 12;
   cx.shadowColor = col;
 
   const grad = cx.createLinearGradient(0, cvs.height, 0, 0);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(0.5, col);
-  grad.addColorStop(1, 'rgba(255,255,255,0.4)');
+  grad.addColorStop(0.4, col);
+  grad.addColorStop(1, 'rgba(255,255,255,0.3)');
   cx.fillStyle = grad;
 
   for (let i = 0; i < bars; i++) {
-    const h = Math.max(smooth[i], 2);
-    cx.fillRect(mid + i*(bw+sp), cvs.height - h, bw, h);
-    cx.fillRect(mid - i*(bw+sp) - bw, cvs.height - h, bw, h);
+    const h = Math.max(smoothBars[i], 1.5);
+    cx.fillRect(mid + i * (barWidth + spacing), cvs.height - h, barWidth, h);
+    cx.fillRect(mid - i * (barWidth + spacing) - barWidth, cvs.height - h, barWidth, h);
   }
 }
 
 // ==========================================================================
-// 8. WALLPAPER ENGINE PROPERTIES
+// 9. WALLPAPER ENGINE PROPERTIES
 // ==========================================================================
-
-function extractRgb(c) {
-  if (c.startsWith('rgb')) { const m = c.match(/\d+/g); return m ? m.slice(0,3).map(Number) : [175,105,239]; }
-  if (c.startsWith('#')) {
-    let h = c.slice(1);
-    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
-  }
-  return [175,105,239];
-}
 
 window.wallpaperPropertyListener = {
-  applyUserProperties(props) {
-    if (props.primarycolor) {
-      const p = props.primarycolor.value.split(' ');
+  applyUserProperties: function(properties) {
+    if (properties.primarycolor) {
+      const parts = properties.primarycolor.value.split(' ');
       let col;
-      if (p.length >= 3) col = `rgb(${Math.round(p[0]*255)},${Math.round(p[1]*255)},${Math.round(p[2]*255)})`;
-      else col = props.primarycolor.value;
-      document.documentElement.style.setProperty('--primary-color', col);
-      const ch = extractRgb(col);
-      document.documentElement.style.setProperty('--primary-color-rgb', ch.join(', '));
+      if (parts.length >= 3) {
+        col = `rgb(${Math.round(parts[0]*255)}, ${Math.round(parts[1]*255)}, ${Math.round(parts[2]*255)})`;
+      } else {
+        col = properties.primarycolor.value;
+      }
+      applyColor(col);
     }
-    if (props.showvisualizer) {
-      cvs.style.display = props.showvisualizer.value ? 'block' : 'none';
+    if (properties.showvisualizer) {
+      cvs.style.display = properties.showvisualizer.value ? 'block' : 'none';
     }
-    if (props.visualizeropacity) {
-      cvs.style.opacity = props.visualizeropacity.value / 100;
+    if (properties.visualizeropacity) {
+      cvs.style.opacity = properties.visualizeropacity.value / 100;
     }
   }
 };
 
 // ==========================================================================
-// 9. BOOT
+// 10. BOOT
 // ==========================================================================
 
 tickClock();
 setInterval(tickClock, 1000);
+
+buildSwatches();
+applyColor(themeColors[0].hex);
 
 buildSchedule();
 tickCountdowns();
 setInterval(tickCountdowns, 1000);
 
 setupMedia();
-drawVis();
+drawVisualizer();

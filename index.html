@@ -3,43 +3,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="F1 2026 Race Calendar with full session schedules, live countdowns, media player, and audio visualizer for Wallpaper Engine.">
   <title>F1 Racing Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Ambient background glow -->
-  <div class="ambient-glow" id="ambient-glow-bg"></div>
+  <!-- Ambient background -->
+  <div class="aurora" id="aurora-bg"></div>
   <div class="grid-overlay"></div>
 
-  <!-- Right-side panel -->
-  <aside class="right-panel" id="right-panel">
+  <!-- Center Clock (prominent wallpaper centerpiece) -->
+  <div class="center-clock-wrap" id="center-clock-wrap">
+    <div class="clock-time" id="digital-clock">00:00:00</div>
+    <div class="clock-date" id="date-display">Friday, July 3, 2026</div>
 
-    <!-- Clock -->
-    <header class="clock-block">
-      <div class="clock-time" id="digital-clock">00:00:00</div>
-      <div class="clock-date" id="date-display">Friday, July 3, 2026</div>
+    <!-- Informative upcoming event card -->
+    <div class="next-event-card" id="next-event-card">
+      <div class="next-event-top">
+        <span class="next-event-dot"></span>
+        <span class="next-event-session" id="next-session-name">Practice 1</span>
+        <span class="next-event-countdown" id="next-session-countdown">--:--:--</span>
+      </div>
+      <div class="next-event-bottom">
+        <img class="next-event-flag" id="next-session-flag" src="" alt="">
+        <span class="next-event-circuit" id="next-session-circuit">Circuit Name</span>
+        <span class="next-event-time" id="next-session-time">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule panel (right side, fixed) -->
+  <aside class="right-panel glass" id="right-panel">
+    <header class="panel-header">
+      <span class="panel-title">F1 2026 Calendar</span>
+      <span class="panel-subtitle">Race Weekend Schedule</span>
     </header>
-
-    <!-- Full F1 Schedule (scrollable) -->
     <section class="schedule-scroll" id="schedule-scroll">
-      <!-- Dynamically built by script.js -->
+      <!-- Built by script.js -->
     </section>
-
   </aside>
 
-  <!-- Bottom-right media player -->
-  <section class="media-widget waiting-media" id="media-panel">
+  <!-- Media / Audio detect (bottom-right, fixed) -->
+  <section class="media-widget glass waiting-media" id="media-panel">
     <div class="media-placeholder" id="media-placeholder-id">
-      <div class="music-wave"><span></span><span></span><span></span><span></span></div>
+      <div class="music-wave"><span></span><span></span><span></span><span></span><span></span></div>
       <p>Awaiting Media...</p>
     </div>
     <div class="media-content hidden" id="media-content-id">
       <div class="thumb-wrap">
         <img class="album-art" id="media-album-art" src="" alt="Album Art" crossorigin="anonymous">
+        <div class="thumb-eq"><span></span><span></span><span></span></div>
       </div>
       <div class="media-info">
+        <span class="media-now-playing">Now Playing</span>
         <div class="media-title-wrap"><h2 class="media-title" id="media-title">Track</h2></div>
         <div class="media-artist-wrap"><p class="media-artist" id="media-artist">Artist</p></div>
         <div class="media-progress">
@@ -50,6 +66,12 @@
       </div>
     </div>
   </section>
+
+  <!-- Color theme selector (bottom-center, fixed) -->
+  <div class="color-bar glass" id="color-bar">
+    <span class="color-bar-label">Theme</span>
+    <div class="color-swatches" id="color-swatches"></div>
+  </div>
 
   <!-- Audio visualizer -->
   <canvas class="visualizer" id="audio-visualizer-canvas" width="1920" height="120"></canvas>
