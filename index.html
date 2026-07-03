@@ -3,113 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Sleek F1 Formula One 2026 Calendar dashboard wallpaper featuring 1-card and 3-card views, timezone localizations, live countdowns, and a system media visualizer.">
-  <title>F1 Formula One 2026 Calendar</title>
+  <meta name="description" content="F1 2026 Race Calendar with full session schedules, live countdowns, media player, and audio visualizer for Wallpaper Engine.">
+  <title>F1 Racing Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Ambient background glow elements -->
+
+  <!-- Ambient background glow -->
   <div class="ambient-glow" id="ambient-glow-bg"></div>
   <div class="grid-overlay"></div>
 
-  <!-- Top-Right Floating Clock -->
-  <div class="top-right-clock" id="clock-container-id">
-    <div class="clock-time" id="digital-clock">00:00:00</div>
-    <div class="clock-date" id="date-display">Friday, July 3, 2026</div>
-  </div>
+  <!-- Right-side panel -->
+  <aside class="right-panel" id="right-panel">
 
-  <!-- Main Dashboard Container -->
-  <main class="dashboard-wrapper">
-    
-    <!-- Centered Header -->
-    <header class="main-header">
-      <span class="header-subtitle">a bad driver's</span>
-      <h1 class="header-title">F1 Formula One <span class="accent-text">2026 Calendar</span></h1>
+    <!-- Clock -->
+    <header class="clock-block">
+      <div class="clock-time" id="digital-clock">00:00:00</div>
+      <div class="clock-date" id="date-display">Friday, July 3, 2026</div>
     </header>
 
-    <!-- F1 Cards Layout Area (Populated Dynamically) -->
-    <section class="cards-container view-3-cards" id="f1-cards-container" aria-label="F1 Grand Prix Cards">
-      <!-- Cards will be dynamically injected by script.js -->
+    <!-- Full F1 Schedule (scrollable) -->
+    <section class="schedule-scroll" id="schedule-scroll">
+      <!-- Dynamically built by script.js -->
     </section>
 
-    <!-- Bottom Interactive Control Bar -->
-    <footer class="controls-panel-container">
-      <div class="controls-panel">
-        <!-- Prev Button -->
-        <button class="ctrl-btn arrow-btn" id="prev-gp-btn" aria-label="Previous Round">&#9664;</button>
-        
-        <!-- View Mode Toggles -->
-        <div class="view-toggles">
-          <button class="ctrl-btn toggle-btn" id="view-1-btn">1 Card</button>
-          <button class="ctrl-btn toggle-btn active" id="view-3-btn">3 Cards</button>
-        </div>
-        
-        <!-- Toggle Media Player Button -->
-        <button class="ctrl-btn icon-btn" id="media-toggle-btn" aria-label="Toggle Media Player">&#127925;</button>
-        
-        <!-- Theme Accent Picker Dots -->
-        <div class="color-picker-dots" id="color-dots-container">
-          <button class="color-dot active" data-color="#AF69EF" style="background-color: #AF69EF;" aria-label="Orchid Purple"></button>
-          <button class="color-dot" data-color="#E10600" style="background-color: #E10600;" aria-label="Formula 1 Red"></button>
-          <button class="color-dot" data-color="#FF9800" style="background-color: #FF9800;" aria-label="McLaren Orange"></button>
-          <button class="color-dot" data-color="#00D2FF" style="background-color: #00D2FF;" aria-label="Williams Blue"></button>
-          <button class="color-dot" data-color="#4CAF50" style="background-color: #4CAF50;" aria-label="Aston Martin Green"></button>
-          <button class="color-dot" data-color="#E91E63" style="background-color: #E91E63;" aria-label="BWT Pink"></button>
-        </div>
+  </aside>
 
-        <!-- Next Button -->
-        <button class="ctrl-btn arrow-btn" id="next-gp-btn" aria-label="Next Round">&#9654;</button>
+  <!-- Bottom-right media player -->
+  <section class="media-widget waiting-media" id="media-panel">
+    <div class="media-placeholder" id="media-placeholder-id">
+      <div class="music-wave"><span></span><span></span><span></span><span></span></div>
+      <p>Awaiting Media...</p>
+    </div>
+    <div class="media-content hidden" id="media-content-id">
+      <div class="thumb-wrap">
+        <img class="album-art" id="media-album-art" src="" alt="Album Art" crossorigin="anonymous">
       </div>
-      
-      <!-- Footer reference matching image -->
-      <div class="footer-credits">
-        F1 Formula One Collection: <span class="credits-link">https://steamcommunity.com/sharedfiles/filedetails/?id=2553025200</span>
-      </div>
-    </footer>
-
-    <!-- Floating Live Media Player Widget (Bottom Right Corner, Toggleable) -->
-    <section class="panel floating-media-panel media-hidden waiting-media" id="media-panel" aria-label="Media Player">
-      <!-- Awaiting Media Placeholder -->
-      <div class="media-placeholder" id="media-placeholder-id">
-        <div class="music-wave">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <p>Awaiting Media...</p>
-      </div>
-
-      <!-- Active Media Player Content -->
-      <div class="media-content hidden" id="media-content-id">
-        <div class="thumbnail-wrapper">
-          <img class="album-art" id="media-album-art" src="" alt="Album Artwork" crossorigin="anonymous">
-          <div class="art-overlay"></div>
-        </div>
-        
-        <div class="media-details">
-          <div class="track-title-container">
-            <h2 class="track-title" id="media-title">Track Name</h2>
-          </div>
-          <div class="track-artist-container">
-            <p class="track-artist" id="media-artist">Artist Name</p>
-          </div>
-          
-          <div class="progress-bar-container" id="media-timeline-container">
-            <span class="time-label current-time" id="media-time-current">0:00</span>
-            <div class="timeline-track" id="media-timeline-track">
-              <div class="timeline-fill" id="media-timeline-fill"></div>
-            </div>
-            <span class="time-label total-time" id="media-time-total">0:00</span>
-          </div>
+      <div class="media-info">
+        <div class="media-title-wrap"><h2 class="media-title" id="media-title">Track</h2></div>
+        <div class="media-artist-wrap"><p class="media-artist" id="media-artist">Artist</p></div>
+        <div class="media-progress">
+          <span class="time-lbl" id="media-time-current">0:00</span>
+          <div class="progress-track"><div class="progress-fill" id="media-timeline-fill"></div></div>
+          <span class="time-lbl" id="media-time-total">0:00</span>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Ambient Audio Symmetrical Visualizer (Full Width Bottom Edge) -->
-    <canvas class="visualizer-canvas" id="audio-visualizer-canvas" width="1920" height="130"></canvas>
-
-  </main>
+  <!-- Audio visualizer -->
+  <canvas class="visualizer" id="audio-visualizer-canvas" width="1920" height="120"></canvas>
 
   <script src="script.js"></script>
 </body>
