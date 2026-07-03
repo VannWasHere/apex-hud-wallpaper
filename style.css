@@ -11,7 +11,7 @@
   /* Core Dark Theme System */
   --bg-dark: #050508;
   --bg-darker: #020203;
-  --panel-bg: rgba(10, 10, 15, 0.65);
+  --panel-bg: rgba(12, 12, 18, 0.6);
   --panel-border: rgba(255, 255, 255, 0.05);
   --panel-border-hover: rgba(255, 255, 255, 0.09);
   --panel-blur: 20px;
@@ -20,10 +20,10 @@
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --text-primary: #ffffff;
   --text-secondary: #8b8e99;
-  --text-muted: #4e5058;
+  --text-muted: #4b4d56;
   
   /* Shadows & Glows */
-  --shadow-main: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  --shadow-main: 0 12px 40px 0 rgba(0, 0, 0, 0.65);
   --primary-glow: 0 0 15px rgba(var(--primary-color-rgb), 0.35);
   --primary-glow-strong: 0 0 25px rgba(var(--primary-color-rgb), 0.6);
 }
@@ -47,7 +47,7 @@ body {
   overflow: hidden;
   position: relative;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
 }
 
@@ -62,17 +62,17 @@ body {
   width: 140%;
   height: 140%;
   background: radial-gradient(
-    circle at 80% 20%, 
-    rgba(var(--primary-color-rgb), 0.1) 0%, 
+    circle at 50% 30%, 
+    rgba(var(--primary-color-rgb), 0.08) 0%, 
     rgba(10, 10, 15, 0) 50%
   ),
   radial-gradient(
-    circle at 20% 80%, 
-    rgba(var(--primary-color-rgb), 0.05) 0%, 
-    rgba(5, 5, 8, 0) 60%
+    circle at 80% 80%, 
+    rgba(var(--primary-color-rgb), 0.04) 0%, 
+    rgba(5, 5, 8, 0) 50%
   );
   z-index: -2;
-  animation: rotateGlow 40s linear infinite;
+  animation: rotateGlow 30s linear infinite;
   pointer-events: none;
 }
 
@@ -83,75 +83,391 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-size: 50px 50px;
+  background-size: 60px 60px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.006) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.006) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
   z-index: -1;
   pointer-events: none;
 }
 
 /* ==========================================================================
-   DASHBOARD CONTAINER
+   MAIN DASHBOARD WRAPPER
    ========================================================================== */
-.dashboard-container {
+.dashboard-wrapper {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 94%;
-  width: 420px;
-  margin-right: 3%;
+  align-items: center;
+  height: 86vh;
+  width: 100vw;
+  max-width: 1200px;
   z-index: 10;
-  gap: 20px;
+  padding: 10px 0;
 }
 
-/* Glassmorphism panels base */
-.panel {
+/* ==========================================================================
+   CENTERED HEADER
+   ========================================================================== */
+.main-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header-subtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 3px;
+  text-transform: lowercase;
+  opacity: 0.7;
+}
+
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.accent-text {
+  color: var(--primary-color);
+  text-shadow: var(--primary-glow);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+/* ==========================================================================
+   DYNAMIC GP CARDS CONTAINER (1 vs 3 CARDS VIEW)
+   ========================================================================== */
+.cards-container {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 24px;
+  width: 100%;
+  min-height: 480px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Width constraint logic based on view configuration */
+.cards-container.view-3-cards {
+  max-width: 1150px;
+}
+
+.cards-container.view-1-cards {
+  max-width: 400px;
+}
+
+/* Individual Grand Prix Card */
+.gp-card {
   background: var(--panel-bg);
   backdrop-filter: blur(var(--panel-blur));
   -webkit-backdrop-filter: blur(var(--panel-blur));
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   box-shadow: var(--shadow-main);
-  transition: border 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-  overflow: hidden;
-}
-
-.panel:hover {
-  border-color: var(--panel-border-hover);
-  box-shadow: var(--shadow-main), 0 0 20px rgba(var(--primary-color-rgb), 0.08);
-}
-
-.separator {
-  border: none;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--panel-border) 20%, var(--panel-border) 80%, transparent);
-  margin: 0;
-}
-
-/* ==========================================================================
-   F1 SCHEDULE & CLOCK PANEL (Top Right)
-   ========================================================================== */
-.top-right-panel {
+  width: 360px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0; /* Important for scroll container inside flex */
+  gap: 20px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Digital Clock */
-.clock-container {
-  padding: 24px;
-  text-align: right;
+.gp-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--panel-border-hover);
+  box-shadow: var(--shadow-main), 0 0 30px rgba(var(--primary-color-rgb), 0.05);
+}
+
+/* Highlight the primary/active GP (First card in 3-card, or the centered 1-card) */
+.gp-card.active-card {
+  border-color: rgba(var(--primary-color-rgb), 0.25);
+  box-shadow: var(--shadow-main), 0 0 25px rgba(var(--primary-color-rgb), 0.05);
+}
+
+.gp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gp-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gp-card-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  letter-spacing: -0.5px;
+  transition: color 0.3s ease;
+}
+
+.gp-card-track {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.gp-card-flag {
+  width: 44px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+/* Vertical sessions stack */
+.gp-card-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Session row */
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.01);
+  transition: all 0.25s ease;
+}
+
+.session-row.completed {
+  opacity: 0.35;
+}
+
+/* Active next session highlight */
+.session-row.active-next {
+  background: rgba(var(--primary-color-rgb), 0.06);
+  border-color: rgba(var(--primary-color-rgb), 0.2);
+  box-shadow: 0 0 12px rgba(var(--primary-color-rgb), 0.04);
+}
+
+.session-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.session-row.active-next .session-name {
+  color: var(--text-primary);
+}
+
+.session-details {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 2px;
 }
 
-.digital-time {
-  font-size: 3.2rem;
+.session-time {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.session-row.active-next .session-time {
+  color: var(--text-primary);
+}
+
+.session-countdown {
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: -2px;
+  color: var(--primary-color);
+  font-variant-numeric: tabular-nums;
+  font-family: monospace;
+  transition: color 0.3s ease;
+}
+
+.session-row.completed .session-countdown {
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   BOTTOM CONTROLS BAR & FOOTER
+   ========================================================================== */
+.controls-panel-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.controls-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: rgba(10, 10, 15, 0.55);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  padding: 10px 24px;
+  border-radius: 30px;
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-main);
+}
+
+/* Button aesthetics */
+.ctrl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctrl-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Arrow buttons */
+.arrow-btn {
+  font-size: 0.95rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.arrow-btn:hover {
+  background: rgba(var(--primary-color-rgb), 0.12);
+  border-color: rgba(var(--primary-color-rgb), 0.3);
+  color: var(--primary-color);
+  box-shadow: var(--primary-glow);
+}
+
+/* 1 vs 3 Cards view selectors */
+.view-toggles {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 20px;
+  padding: 2px;
+  border: 1px solid rgba(255,255,255,0.02);
+}
+
+.toggle-btn {
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.toggle-btn.active {
+  background: var(--primary-color);
+  color: var(--bg-darker);
+  font-weight: 700;
+  box-shadow: var(--primary-glow);
+}
+
+.toggle-btn.active:hover {
+  color: var(--bg-darker);
+}
+
+/* Media trigger music icon */
+.icon-btn {
+  font-size: 1rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.icon-btn.active {
+  background: rgba(var(--primary-color-rgb), 0.15);
+  border-color: rgba(var(--primary-color-rgb), 0.4);
+  color: var(--primary-color);
+  box-shadow: var(--primary-glow);
+  text-shadow: var(--primary-glow);
+}
+
+/* Circular color picker dots */
+.color-picker-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.color-dot:hover {
+  transform: scale(1.2);
+}
+
+.color-dot.active {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 10px var(--text-primary);
+}
+
+/* Footer credit line */
+.footer-credits {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.credits-link {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   FLOATING DIGITAL CLOCK (Top Right)
+   ========================================================================== */
+.top-right-clock {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  box-shadow: var(--shadow-main);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.clock-time {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -159,367 +475,45 @@ body {
   transition: text-shadow 0.3s ease;
 }
 
-.date-display {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-top: 8px;
-}
-
-/* Active Grand Prix Details Card */
-.active-gp-card {
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background: linear-gradient(180deg, rgba(var(--primary-color-rgb), 0.02) 0%, transparent 100%);
-}
-
-.active-gp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.gp-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.round-badge {
-  display: inline-block;
-  align-self: flex-start;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), 0.12);
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(var(--primary-color-rgb), 0.3);
-  text-transform: uppercase;
-}
-
-.gp-country {
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--text-primary);
-}
-
-.gp-track {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-weight: 400;
-}
-
-.country-flag {
-  width: 48px;
-  height: 32px;
-  object-fit: cover;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.08);
-}
-
-/* Sessions and Countdown Grid */
-.sessions-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.session-row {
-  display: grid;
-  grid-template-columns: 1.2fr 1.3fr 1.5fr;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.02);
-  font-size: 0.8rem;
-  transition: all 0.2s ease;
-}
-
-/* Session Status Styling */
-.session-row.completed {
-  opacity: 0.45;
-}
-
-.session-row.active-next {
-  background: rgba(var(--primary-color-rgb), 0.05);
-  border-color: rgba(var(--primary-color-rgb), 0.2);
-  box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.05);
-}
-
-.session-row.active-next .session-name {
-  color: var(--primary-color);
-  font-weight: 700;
-}
-
-.session-name {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.session-time {
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.session-countdown {
-  text-align: right;
-  font-family: monospace;
-  font-weight: 700;
-  font-size: 0.78rem;
-  letter-spacing: -0.2px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.session-row.active-next .session-countdown {
-  color: var(--primary-color);
-}
-
-/* Season Calendar Section */
-.upcoming-races-section {
-  padding: 16px 24px 24px 24px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.section-title {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  font-weight: 700;
-}
-
-.upcoming-races-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 6px;
-}
-
-/* Custom Scrollbar for Races List */
-.upcoming-races-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.upcoming-races-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.upcoming-races-list::-webkit-scrollbar-thumb {
-  background: rgba(var(--primary-color-rgb), 0.25);
-  border-radius: 4px;
-}
-
-.upcoming-races-list::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
-}
-
-/* Upcoming GP Row Card */
-.upcoming-gp-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.02);
-  border-left: 3px solid transparent;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.upcoming-gp-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.06);
-  border-left-color: rgba(var(--primary-color-rgb), 0.4);
-  transform: translateX(-2px);
-}
-
-.upcoming-gp-item.selected {
-  border-color: rgba(var(--primary-color-rgb), 0.2);
-  border-left-color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), 0.06);
-  box-shadow: inset 0 0 10px rgba(var(--primary-color-rgb), 0.03);
-}
-
-.upcoming-gp-item.past {
-  opacity: 0.45;
-}
-
-.upcoming-gp-item.past:hover {
-  opacity: 0.8;
-}
-
-.gp-item-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-}
-
-.gp-item-round {
+.clock-date {
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 4px;
-  border-radius: 4px;
-  min-width: 28px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.upcoming-gp-item.selected .gp-item-round {
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), 0.12);
-}
-
-.gp-item-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.gp-item-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.gp-item-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gp-item-format {
-  font-size: 0.55rem;
-  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 1px 4px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.gp-item-format.sprint {
-  color: #ff9800;
-  background: rgba(255, 152, 0, 0.1);
-  border: 1px solid rgba(255, 152, 0, 0.2);
-}
-
-.gp-item-format.standard {
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gp-item-subtitle {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 170px;
-}
-
-.gp-item-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.gp-item-date {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-align: right;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.upcoming-gp-item.selected .gp-item-date {
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), 0.08);
-  border-color: rgba(var(--primary-color-rgb), 0.15);
-}
-
-.gp-item-status-badge {
-  font-size: 0.55rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  padding: 1px 4px;
-  border-radius: 3px;
-  line-height: 1;
-}
-
-.gp-item-status-badge.live {
-  color: #4caf50;
-  background: rgba(76, 175, 80, 0.1);
-  border: 1px solid rgba(76, 175, 80, 0.2);
-  animation: pulseOpacity 1.5s ease-in-out infinite;
-}
-
-.gp-item-status-badge.next {
-  color: var(--primary-color);
-  background: rgba(var(--primary-color-rgb), 0.1);
-  border: 1px solid rgba(var(--primary-color-rgb), 0.2);
-}
-
-.gp-item-status-badge.done {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.gp-item-flag {
-  width: 24px;
-  height: 16px;
-  object-fit: cover;
-  border-radius: 2px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  flex-shrink: 0;
+  letter-spacing: 1px;
+  margin-top: 4px;
 }
 
 /* ==========================================================================
-   LIVE MEDIA PLAYER WIDGET (Bottom Right)
+   FLOATING MEDIA PLAYER (Bottom-Right, Toggleable)
    ========================================================================== */
-.bottom-right-panel {
+.floating-media-panel {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 360px;
   height: 120px;
   display: flex;
   align-items: center;
   padding: 16px;
-  position: relative;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Placeholder state */
-.bottom-right-panel.waiting-media {
+/* State management classes */
+.floating-media-panel.media-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+}
+
+.floating-media-panel.media-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.floating-media-panel.waiting-media {
   justify-content: center;
 }
 
@@ -535,7 +529,6 @@ body {
   width: 100%;
 }
 
-/* Minimalist animated audio wave */
 .music-wave {
   display: flex;
   align-items: flex-end;
@@ -555,7 +548,6 @@ body {
 .music-wave span:nth-child(3) { animation-delay: 0.3s; }
 .music-wave span:nth-child(4) { animation-delay: 0.45s; }
 
-/* Media Content Layout */
 .media-content {
   display: flex;
   align-items: center;
@@ -567,7 +559,7 @@ body {
   position: relative;
   width: 86px;
   height: 86px;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 8px 16px rgba(0,0,0,0.5);
   flex-shrink: 0;
@@ -600,7 +592,6 @@ body {
   gap: 6px;
 }
 
-/* Double wrapper strategy to prevent overflow issues */
 .track-title-container, .track-artist-container {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -609,20 +600,18 @@ body {
 }
 
 .track-title {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.2px;
   line-height: 1.2;
 }
 
 .track-artist {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
-/* Timeline & Live Progress Bar */
 .progress-bar-container {
   display: flex;
   align-items: center;
@@ -659,7 +648,6 @@ body {
   transition: width 0.1s linear;
 }
 
-/* Utility visibility helper */
 .hidden {
   display: none !important;
 }
@@ -672,10 +660,10 @@ body {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 130px;
+  height: 120px;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.4; /* Set default opacity, updated by propertyListener */
+  opacity: 0.35;
   transition: opacity 0.3s ease;
 }
 
@@ -687,7 +675,7 @@ body {
     transform: rotate(0deg) scale(1);
   }
   50% {
-    transform: rotate(180deg) scale(1.1);
+    transform: rotate(180deg) scale(1.08);
   }
   100% {
     transform: rotate(360deg) scale(1);

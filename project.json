@@ -1,6 +1,6 @@
 {
   "title": "F1 Hub & Media Visualizer",
-  "description": "A sleek dark F1 Schedule hub with countdowns, live Windows media controls, and an audio visualizer.",
+  "description": "A sleek centered F1 Schedule hub matching the official calendar design, with toggleable 1/3 card layouts, color selectors, live media controls, and an audio visualizer.",
   "file": "index.html",
   "type": "web",
   "general": {
@@ -9,6 +9,15 @@
         "text": "Theme Accent Color",
         "type": "color",
         "value": "0.686 0.411 0.937"
+      },
+      "clockformat": {
+        "text": "Clock Format",
+        "type": "select",
+        "value": "12h",
+        "options": [
+          {"value": "12h", "label": "12-Hour (AM/PM)"},
+          {"value": "24h", "label": "24-Hour"}
+        ]
       },
       "showvisualizer": {
         "text": "Show Audio Visualizer",
@@ -21,7 +30,7 @@
         "min": 10,
         "max": 100,
         "step": 5,
-        "value": 40
+        "value": 35
       }
     }
   }

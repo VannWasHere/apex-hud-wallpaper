@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Sleek Formula 1 race calendar dashboard and live Windows media progress widget with audio visualizer for Wallpaper Engine.">
-  <title>F1 Racing Dashboard &amp; Media Hub</title>
+  <meta name="description" content="Sleek F1 Formula One 2026 Calendar dashboard wallpaper featuring 1-card and 3-card views, timezone localizations, live countdowns, and a system media visualizer.">
+  <title>F1 Formula One 2026 Calendar</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,50 +12,63 @@
   <div class="ambient-glow" id="ambient-glow-bg"></div>
   <div class="grid-overlay"></div>
 
-  <!-- Main Grid Layout -->
-  <main class="dashboard-container">
+  <!-- Top-Right Floating Clock -->
+  <div class="top-right-clock" id="clock-container-id">
+    <div class="clock-time" id="digital-clock">00:00:00</div>
+    <div class="clock-date" id="date-display">Friday, July 3, 2026</div>
+  </div>
+
+  <!-- Main Dashboard Container -->
+  <main class="dashboard-wrapper">
     
-    <!-- Top-Right Panel: F1 Schedule & Clock -->
-    <section class="panel top-right-panel" id="f1-panel" aria-label="F1 Schedule and Time">
-      
-      <!-- Monospace Digital Clock -->
-      <header class="clock-container" id="clock-container-id">
-        <h1 class="digital-time" id="digital-clock" aria-live="off">00:00:00</h1>
-        <div class="date-display" id="date-display">Friday, July 3, 2026</div>
-      </header>
+    <!-- Centered Header -->
+    <header class="main-header">
+      <span class="header-subtitle">a bad driver's</span>
+      <h1 class="header-title">F1 Formula One <span class="accent-text">2026 Calendar</span></h1>
+    </header>
 
-      <hr class="separator">
-
-      <!-- Active Grand Prix Details (Detailed Countdown) -->
-      <article class="active-gp-card" id="active-gp-card-id">
-        <div class="active-gp-header">
-          <div class="gp-meta">
-            <span class="round-badge" id="active-round">ROUND 9</span>
-            <h2 class="gp-country" id="active-country">Great Britain</h2>
-            <div class="gp-track" id="active-track">Silverstone Circuit</div>
-          </div>
-          <img class="country-flag" id="active-flag" src="https://flagcdn.com/gb.svg" alt="United Kingdom Flag" crossorigin="anonymous">
-        </div>
-
-        <div class="sessions-container" id="active-sessions-list">
-          <!-- Dynamically populated in script.js -->
-        </div>
-      </article>
-
-      <hr class="separator">
-
-      <!-- Scrollable Upcoming Races List -->
-      <section class="upcoming-races-section" id="upcoming-races-section-id">
-        <h3 class="section-title">2026 Season Calendar</h3>
-        <div class="upcoming-races-list" id="upcoming-races-list-container">
-          <!-- Dynamically populated in script.js -->
-        </div>
-      </section>
+    <!-- F1 Cards Layout Area (Populated Dynamically) -->
+    <section class="cards-container view-3-cards" id="f1-cards-container" aria-label="F1 Grand Prix Cards">
+      <!-- Cards will be dynamically injected by script.js -->
     </section>
 
-    <!-- Bottom-Right Panel: Live Media Player Widget -->
-    <section class="panel bottom-right-panel waiting-media" id="media-panel" aria-label="Media Player">
+    <!-- Bottom Interactive Control Bar -->
+    <footer class="controls-panel-container">
+      <div class="controls-panel">
+        <!-- Prev Button -->
+        <button class="ctrl-btn arrow-btn" id="prev-gp-btn" aria-label="Previous Round">&#9664;</button>
+        
+        <!-- View Mode Toggles -->
+        <div class="view-toggles">
+          <button class="ctrl-btn toggle-btn" id="view-1-btn">1 Card</button>
+          <button class="ctrl-btn toggle-btn active" id="view-3-btn">3 Cards</button>
+        </div>
+        
+        <!-- Toggle Media Player Button -->
+        <button class="ctrl-btn icon-btn" id="media-toggle-btn" aria-label="Toggle Media Player">&#127925;</button>
+        
+        <!-- Theme Accent Picker Dots -->
+        <div class="color-picker-dots" id="color-dots-container">
+          <button class="color-dot active" data-color="#AF69EF" style="background-color: #AF69EF;" aria-label="Orchid Purple"></button>
+          <button class="color-dot" data-color="#E10600" style="background-color: #E10600;" aria-label="Formula 1 Red"></button>
+          <button class="color-dot" data-color="#FF9800" style="background-color: #FF9800;" aria-label="McLaren Orange"></button>
+          <button class="color-dot" data-color="#00D2FF" style="background-color: #00D2FF;" aria-label="Williams Blue"></button>
+          <button class="color-dot" data-color="#4CAF50" style="background-color: #4CAF50;" aria-label="Aston Martin Green"></button>
+          <button class="color-dot" data-color="#E91E63" style="background-color: #E91E63;" aria-label="BWT Pink"></button>
+        </div>
+
+        <!-- Next Button -->
+        <button class="ctrl-btn arrow-btn" id="next-gp-btn" aria-label="Next Round">&#9654;</button>
+      </div>
       
+      <!-- Footer reference matching image -->
+      <div class="footer-credits">
+        F1 Formula One Collection: <span class="credits-link">https://steamcommunity.com/sharedfiles/filedetails/?id=2553025200</span>
+      </div>
+    </footer>
+
+    <!-- Floating Live Media Player Widget (Bottom Right Corner, Toggleable) -->
+    <section class="panel floating-media-panel media-hidden waiting-media" id="media-panel" aria-label="Media Player">
       <!-- Awaiting Media Placeholder -->
       <div class="media-placeholder" id="media-placeholder-id">
         <div class="music-wave">
@@ -64,7 +77,7 @@
           <span></span>
           <span></span>
         </div>
-        <p>Awaiting System Media...</p>
+        <p>Awaiting Media...</p>
       </div>
 
       <!-- Active Media Player Content -->
@@ -93,8 +106,8 @@
       </div>
     </section>
 
-    <!-- Background Canvas Audio Visualizer -->
-    <canvas class="visualizer-canvas" id="audio-visualizer-canvas" width="1920" height="150"></canvas>
+    <!-- Ambient Audio Symmetrical Visualizer (Full Width Bottom Edge) -->
+    <canvas class="visualizer-canvas" id="audio-visualizer-canvas" width="1920" height="130"></canvas>
 
   </main>
 

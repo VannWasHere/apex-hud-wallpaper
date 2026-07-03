@@ -1,13 +1,12 @@
 /**
  * Wallpaper Engine - F1 Hub & Media Visualizer
- * Core Script Logic
+ * Centered Layout Logic
  */
 
 // ==========================================================================
 // 1. DATA STRUCTURES & CONFIG
 // ==========================================================================
 
-// Official F1 2026 Calendar Part provided by the user
 const f1Schedule2026 = [
   {
     "round": 9,
@@ -193,7 +192,7 @@ const f1Schedule2026 = [
   }
 ];
 
-// ISO 3166-1 alpha-2 mapping for FlagCDN (Offline friendly, fallback is text)
+// ISO 3166-1 flag mapping
 const countryToFlagCode = {
   "Great Britain": "gb",
   "Belgium": "be",
@@ -207,276 +206,196 @@ const countryToFlagCode = {
   "Mexico": "mx",
   "Brazil": "br",
   "Qatar": "qa",
-  "Abu Dhabi": "ae" // United Arab Emirates flag
+  "Abu Dhabi": "ae"
 };
 
-// Track indices for auto-detected active GP and user-selected GP
-let detectedActiveGpIndex = -1;
-let selectedGpIndex = -1;
-
-// Global settings
-let isClock24h = true;
-
-// ==========================================================================
-// 2. CLOCK & TIMER LOGIC
-// ==========================================================================
-
-function updateClock() {
-  const now = new Date();
-  
-  // Format local hours, minutes, seconds
-  let hours = now.getHours();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  
-  if (!isClock24h) {
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 should be 12
-  }
-  
-  const hStr = String(hours).padStart(2, '0');
-  const mStr = String(now.getMinutes()).padStart(2, '0');
-  const sStr = String(now.getSeconds()).padStart(2, '0');
-  
-  const clockEl = document.getElementById('digital-clock');
-  clockEl.textContent = `${hStr}:${mStr}:${sStr}${!isClock24h ? ' ' + ampm : ''}`;
-  
-  // Format local date text
-  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  document.getElementById('date-display').textContent = now.toLocaleDateString(undefined, options);
-}
+// State Variables
+let detectedActiveGpIndex = -1; // Auto-detected active GP
+let selectedGpIndex = -1;       // Paged GP starting index
+let viewMode = '3-cards';       // '3-cards' or '1-card'
+let isClock24h = false;          // Clock config
 
 // ==========================================================================
-// 3. F1 SCHEDULE LOGIC
+// 2. MOTORSPORT NOMENCLATURE & UTILITIES
 // ==========================================================================
 
 /**
- * Format UTC date to user's local timezone (e.g. Fri 18:30)
+ * Maps country name to official Grand Prix title matching motorsport standards
+ */
+function getGPName(gp) {
+  if (gp.country === "Great Britain") return "British Grand Prix";
+  if (gp.country === "Belgium") return "Belgian Grand Prix";
+  if (gp.country === "Hungary") return "Hungarian Grand Prix";
+  if (gp.country === "Netherlands") return "Dutch Grand Prix";
+  if (gp.country === "Italy") return "Italian Grand Prix";
+  if (gp.country === "Spain") return "Spanish Grand Prix";
+  if (gp.country === "Azerbaijan") return "Azerbaijan Grand Prix";
+  if (gp.country === "Singapore") return "Singapore Grand Prix";
+  if (gp.country === "United States") {
+    if (gp.track.includes("Las Vegas")) {
+      return "Las Vegas Grand Prix";
+    }
+    return "United States Grand Prix";
+  }
+  if (gp.country === "Mexico") return "Mexican Grand Prix";
+  if (gp.country === "Brazil") return "Brazilian Grand Prix";
+  if (gp.country === "Qatar") return "Qatar Grand Prix";
+  if (gp.country === "Abu Dhabi") return "Abu Dhabi Grand Prix";
+  return `${gp.country} Grand Prix`;
+}
+
+/**
+ * Format ISO dates into localized readable readouts (e.g. Fri, Jul 3, 06:30 PM)
  */
 function formatSessionLocalTime(utcString) {
   const localDate = new Date(utcString);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const dayName = dayNames[localDate.getDay()];
-  const hours = String(localDate.getHours()).padStart(2, '0');
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  
+  const day = dayNames[localDate.getDay()];
+  const month = monthNames[localDate.getMonth()];
+  const date = localDate.getDate();
+  
+  let hours = localDate.getHours();
   const minutes = String(localDate.getMinutes()).padStart(2, '0');
-  return `${dayName} ${hours}:${minutes}`;
-}
-
-/**
- * Format weekend date range dynamically (e.g. Jul 17-19)
- */
-function formatDateRange(sessions) {
-  const sessionKeys = Object.keys(sessions);
-  if (sessionKeys.length === 0) return "";
+  const ampm = hours >= 12 ? 'PM' : 'AM';
   
-  const dates = sessionKeys.map(k => new Date(sessions[k]));
-  dates.sort((a, b) => a - b);
-  
-  const startDate = dates[0];
-  const endDate = dates[dates.length - 1];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
-  const startMonth = months[startDate.getMonth()];
-  const startDay = String(startDate.getDate()).padStart(2, '0');
-  
-  if (startDate.getMonth() === endDate.getMonth()) {
-    const endDay = String(endDate.getDate()).padStart(2, '0');
-    return `${startMonth} ${startDay}-${endDay}`;
+  if (!isClock24h) {
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 is 12
+    return `${day}, ${month} ${date}, ${hours}:${minutes} ${ampm}`;
   } else {
-    const endMonth = months[endDate.getMonth()];
-    const endDay = String(endDate.getDate()).padStart(2, '0');
-    return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+    const formattedHours = String(hours).padStart(2, '0');
+    return `${day}, ${month} ${date}, ${formattedHours}:${minutes}`;
   }
 }
 
 /**
- * Get typical F1 session durations in milliseconds
+ * Get F1 session duration bounds for LIVE status
  */
 function getSessionDuration(sessionName) {
   if (sessionName.toLowerCase().includes("race")) {
-    return 2.5 * 60 * 60 * 1000; // 2.5 hours for Grand Prix
+    return 2.5 * 60 * 60 * 1000; // 2.5 hours for race
   }
   if (sessionName.toLowerCase().includes("sprint") && !sessionName.toLowerCase().includes("qualifying")) {
-    return 1 * 60 * 60 * 1000; // 1 hour for Sprint race
+    return 1.0 * 60 * 60 * 1000; // 1 hour for sprint
   }
-  return 1.5 * 60 * 60 * 1000; // 1.5 hours default (Practice / Qualifying)
+  return 1.5 * 60 * 60 * 1000; // 1.5 hours default (Practice/Qualy)
 }
 
-/**
- * Render the main active GP card and sessions
- */
-function renderActiveGP(gpIndex) {
-  selectedGpIndex = gpIndex;
-  const gp = f1Schedule2026[gpIndex];
-  
-  document.getElementById('active-round').textContent = `ROUND ${gp.round}`;
-  document.getElementById('active-country').textContent = gp.country;
-  document.getElementById('active-track').textContent = gp.track;
-  
-  const flagCode = countryToFlagCode[gp.country] || "un";
-  const flagEl = document.getElementById('active-flag');
-  flagEl.src = `https://flagcdn.com/${flagCode}.svg`;
-  flagEl.alt = `${gp.country} Flag`;
-  
-  const sessionsList = document.getElementById('active-sessions-list');
-  sessionsList.innerHTML = '';
-  
-  Object.keys(gp.sessions).forEach((sessionName) => {
-    const utcTime = gp.sessions[sessionName];
-    
-    // Create row element
-    const row = document.createElement('div');
-    row.className = 'session-row';
-    // Sanitized id for styling target
-    const sanitizedId = sessionName.replace(/\s+/g, '-').toLowerCase();
-    row.id = `session-row-${sanitizedId}`;
-    
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'session-name';
-    nameSpan.textContent = sessionName;
-    
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'session-time';
-    timeSpan.textContent = formatSessionLocalTime(utcTime);
-    
-    const countdownSpan = document.createElement('span');
-    countdownSpan.className = 'session-countdown';
-    countdownSpan.id = `countdown-${sanitizedId}`;
-    countdownSpan.textContent = '---';
-    
-    row.appendChild(nameSpan);
-    row.appendChild(timeSpan);
-    row.appendChild(countdownSpan);
-    sessionsList.appendChild(row);
-  });
-}
+// ==========================================================================
+// 3. MAIN GP CARD RENDERING & PAGINATION
+// ==========================================================================
 
 /**
- * Render scrollable list of all races in the season
+ * Build and inject card markups into the DOM based on selected starting index
  */
-function renderUpcomingList(detectedActiveIdx, selectedIdx) {
-  const listContainer = document.getElementById('upcoming-races-list-container');
-  listContainer.innerHTML = '';
+function renderGPCards() {
+  const container = document.getElementById('f1-cards-container');
+  container.innerHTML = '';
   
-  f1Schedule2026.forEach((gp, index) => {
-    const item = document.createElement('div');
-    item.className = 'upcoming-gp-item';
+  const numCards = viewMode === '3-cards' ? 3 : 1;
+  const limit = f1Schedule2026.length - numCards;
+  
+  // Clamp selectedGpIndex to prevent rendering out-of-bounds cards
+  const clampedStart = Math.max(0, Math.min(selectedGpIndex, limit));
+  selectedGpIndex = clampedStart;
+  
+  for (let i = clampedStart; i < clampedStart + numCards; i++) {
+    const gp = f1Schedule2026[i];
     
-    // Highlight the selected item
-    if (index === selectedIdx) {
-      item.classList.add('selected');
+    // Create card wrapper
+    const card = document.createElement('article');
+    card.className = 'gp-card';
+    if (i === detectedActiveGpIndex) {
+      card.classList.add('active-card');
     }
     
-    // Dim past races
-    const now = new Date();
-    const raceTime = new Date(gp.sessions["Race"]);
-    const isPast = now.getTime() >= (raceTime.getTime() + 3.0 * 60 * 60 * 1000);
-    if (isPast) {
-      item.classList.add('past');
-    }
+    // Card Header
+    const cardHeader = document.createElement('header');
+    cardHeader.className = 'gp-card-header';
     
-    const leftDiv = document.createElement('div');
-    leftDiv.className = 'gp-item-left';
+    const metaDiv = document.createElement('div');
+    metaDiv.className = 'gp-card-meta';
     
-    // Round badge
-    const roundSpan = document.createElement('span');
-    roundSpan.className = 'gp-item-round';
-    roundSpan.textContent = `R${String(gp.round).padStart(2, '0')}`;
+    const title = document.createElement('h2');
+    title.className = 'gp-card-title';
+    title.textContent = getGPName(gp);
     
-    // Flag
+    const track = document.createElement('span');
+    track.className = 'gp-card-track';
+    track.textContent = gp.track;
+    
+    metaDiv.appendChild(title);
+    metaDiv.appendChild(track);
+    
     const flagCode = countryToFlagCode[gp.country] || "un";
     const flagImg = document.createElement('img');
-    flagImg.className = 'gp-item-flag';
+    flagImg.className = 'gp-card-flag';
     flagImg.src = `https://flagcdn.com/${flagCode}.svg`;
     flagImg.alt = `${gp.country} Flag`;
     flagImg.crossOrigin = "anonymous";
     
-    // Details
-    const metaDiv = document.createElement('div');
-    metaDiv.className = 'gp-item-meta';
+    cardHeader.appendChild(metaDiv);
+    cardHeader.appendChild(flagImg);
+    card.appendChild(cardHeader);
     
-    const titleRow = document.createElement('div');
-    titleRow.className = 'gp-item-title-row';
+    // Sessions list
+    const sessionsStack = document.createElement('div');
+    sessionsStack.className = 'gp-card-sessions';
     
-    const titleSpan = document.createElement('span');
-    titleSpan.className = 'gp-item-title';
-    titleSpan.textContent = gp.country;
-    
-    const formatSpan = document.createElement('span');
-    formatSpan.className = `gp-item-format ${gp.format}`;
-    formatSpan.textContent = gp.format;
-    
-    titleRow.appendChild(titleSpan);
-    titleRow.appendChild(formatSpan);
-    
-    const subtitleSpan = document.createElement('span');
-    subtitleSpan.className = 'gp-item-subtitle';
-    subtitleSpan.textContent = gp.track;
-    
-    metaDiv.appendChild(titleRow);
-    metaDiv.appendChild(subtitleSpan);
-    
-    leftDiv.appendChild(roundSpan);
-    leftDiv.appendChild(flagImg);
-    leftDiv.appendChild(metaDiv);
-    
-    const rightDiv = document.createElement('div');
-    rightDiv.className = 'gp-item-right';
-    
-    // Date
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'gp-item-date';
-    dateDiv.textContent = formatDateRange(gp.sessions);
-    
-    // Status Badge
-    const statusSpan = document.createElement('span');
-    statusSpan.className = 'gp-item-status-badge';
-    
-    if (index === detectedActiveIdx) {
-      // Check if any session of the current weekend is live right now
-      let isLive = false;
-      Object.keys(gp.sessions).forEach((sName) => {
-        const sTime = new Date(gp.sessions[sName]);
-        const diff = sTime.getTime() - now.getTime();
-        const duration = getSessionDuration(sName);
-        if (diff <= 0 && Math.abs(diff) < duration) {
-          isLive = true;
-        }
-      });
+    Object.keys(gp.sessions).forEach((sessionName) => {
+      const utcTime = gp.sessions[sessionName];
       
-      if (isLive) {
-        statusSpan.textContent = 'LIVE';
-        statusSpan.classList.add('live');
-      } else {
-        statusSpan.textContent = 'NEXT';
-        statusSpan.classList.add('next');
-      }
-    } else if (isPast) {
-      statusSpan.textContent = 'DONE';
-      statusSpan.classList.add('done');
-    } else {
-      statusSpan.textContent = 'UPCOMING';
-      statusSpan.classList.add('upcoming');
-    }
-    
-    rightDiv.appendChild(dateDiv);
-    rightDiv.appendChild(statusSpan);
-    
-    item.appendChild(leftDiv);
-    item.appendChild(rightDiv);
-    
-    // Click listener to dynamically switch the displayed race details
-    item.addEventListener('click', () => {
-      renderActiveGP(index);
-      renderUpcomingList(detectedActiveGpIndex, selectedGpIndex);
+      const row = document.createElement('div');
+      row.className = 'session-row';
+      
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'session-name';
+      nameSpan.textContent = sessionName;
+      
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'session-details';
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'session-time';
+      timeSpan.textContent = formatSessionLocalTime(utcTime);
+      
+      const countdownSpan = document.createElement('span');
+      countdownSpan.className = 'session-countdown';
+      // Pass data properties for generic selection in tick interval
+      countdownSpan.dataset.round = gp.round;
+      countdownSpan.dataset.session = sessionName;
+      countdownSpan.textContent = '---';
+      
+      detailsDiv.appendChild(timeSpan);
+      detailsDiv.appendChild(countdownSpan);
+      row.appendChild(nameSpan);
+      row.appendChild(detailsDiv);
+      sessionsStack.appendChild(row);
     });
     
-    listContainer.appendChild(item);
-  });
+    card.appendChild(sessionsStack);
+    container.appendChild(card);
+  }
+  
+  // Disable navigation arrows if limit bounds are reached
+  updateNavigationButtons();
 }
 
-/**
- * Format duration differences into clean, ticking clock readouts
- */
+function updateNavigationButtons() {
+  const prevBtn = document.getElementById('prev-gp-btn');
+  const nextBtn = document.getElementById('next-gp-btn');
+  const numCards = viewMode === '3-cards' ? 3 : 1;
+  
+  if (prevBtn) prevBtn.disabled = selectedGpIndex <= 0;
+  if (nextBtn) nextBtn.disabled = selectedGpIndex >= f1Schedule2026.length - numCards;
+}
+
+// ==========================================================================
+// 4. TICKING COUNTDOWN TICKER
+// ==========================================================================
+
 function formatCountdown(diffMs) {
   const diffSecs = Math.floor(diffMs / 1000);
   const secs = diffSecs % 60;
@@ -491,113 +410,96 @@ function formatCountdown(diffMs) {
   }
 }
 
-/**
- * Primary countdown update loop (ticks once per second)
- */
 function updateCountdowns() {
-  if (selectedGpIndex === -1) return;
-  
-  const gp = f1Schedule2026[selectedGpIndex];
+  const countdownEls = document.querySelectorAll('.session-countdown');
   const now = new Date();
   
-  // Track the next upcoming session details
-  let nextSessionName = null;
-  let minDiff = Infinity;
+  // Keep track of the immediate next session for each visible GP round
+  const nextSessionsByRound = {};
   
-  Object.keys(gp.sessions).forEach((sessionName) => {
+  countdownEls.forEach((el) => {
+    const round = parseInt(el.dataset.round);
+    const sessionName = el.dataset.session;
+    
+    const gp = f1Schedule2026.find(g => g.round === round);
+    if (!gp) return;
+    
     const utcTime = gp.sessions[sessionName];
     const sessionTime = new Date(utcTime);
-    const sanitizedId = sessionName.replace(/\s+/g, '-').toLowerCase();
-    
-    const countdownEl = document.getElementById(`countdown-${sanitizedId}`);
-    const rowEl = document.getElementById(`session-row-${sanitizedId}`);
-    
-    if (!countdownEl || !rowEl) return;
-    
     const diff = sessionTime.getTime() - now.getTime();
     const duration = getSessionDuration(sessionName);
     
-    // Clear dynamic states
-    rowEl.classList.remove('active-next', 'completed');
+    const rowEl = el.closest('.session-row');
+    if (rowEl) {
+      rowEl.classList.remove('active-next', 'completed');
+    }
     
     if (diff > 0) {
-      // Session is in the future
-      countdownEl.textContent = formatCountdown(diff);
+      el.textContent = formatCountdown(diff);
       
-      // Determine if it is the closest upcoming session
-      if (diff < minDiff) {
-        minDiff = diff;
-        nextSessionName = sessionName;
+      // Store to evaluate closest future session
+      if (!nextSessionsByRound[round] || diff < nextSessionsByRound[round].diff) {
+        nextSessionsByRound[round] = {
+          element: el,
+          row: rowEl,
+          diff: diff
+        };
       }
     } else if (diff <= 0 && Math.abs(diff) < duration) {
-      // Session is currently LIVE
-      countdownEl.textContent = 'LIVE';
-      rowEl.classList.add('active-next');
+      el.textContent = 'LIVE';
+      if (rowEl) rowEl.classList.add('active-next');
     } else {
-      // Session has completed
-      countdownEl.textContent = 'DONE';
-      rowEl.classList.add('completed');
+      el.textContent = 'DONE';
+      if (rowEl) rowEl.classList.add('completed');
     }
   });
   
-  // Highlight next upcoming session if there are no LIVE sessions
-  if (nextSessionName) {
-    const isAnyLive = Array.from(document.querySelectorAll('.session-countdown'))
-      .some(el => el.textContent === 'LIVE');
-      
-    if (!isAnyLive) {
-      const sanitizedId = nextSessionName.replace(/\s+/g, '-').toLowerCase();
-      const nextRow = document.getElementById(`session-row-${sanitizedId}`);
-      if (nextRow) {
-        nextRow.classList.add('active-next');
+  // Highlight the next upcoming session ONLY if no session is currently LIVE on that card
+  Object.keys(nextSessionsByRound).forEach((roundStr) => {
+    const round = parseInt(roundStr);
+    
+    // Check if this round currently has a LIVE row
+    const cardEl = document.querySelector(`.session-countdown[data-round="${round}"]`).closest('.gp-card');
+    const hasLive = cardEl.querySelector('.session-row.active-next');
+    
+    if (!hasLive) {
+      const nextSession = nextSessionsByRound[round];
+      if (nextSession && nextSession.row) {
+        nextSession.row.classList.add('active-next');
       }
     }
-  }
+  });
 }
 
 /**
- * Scan the list and find the correct race weekend to display
+ * Scan the calendar to calculate the active/next F1 GP weekend
  */
 function initF1Schedule() {
   const now = new Date();
   
-  // Active Grand Prix = first GP where Race finishes in the future
   let activeGpIndex = f1Schedule2026.findIndex(gp => {
     const raceTime = new Date(gp.sessions["Race"]);
-    // Keeps GP active up to 3 hours after start time
     return now.getTime() < (raceTime.getTime() + 3.0 * 60 * 60 * 1000);
   });
   
   if (activeGpIndex === -1) {
-    activeGpIndex = f1Schedule2026.length - 1; // Default to last round if season is over
+    activeGpIndex = f1Schedule2026.length - 1; // Fallback to final GP
   }
   
-  // If the detected active GP changes (or on initial load)
   if (activeGpIndex !== detectedActiveGpIndex) {
     detectedActiveGpIndex = activeGpIndex;
     
-    // Only auto-select active GP if the user hasn't chosen one
+    // Default selected view index to the active GP initially
     if (selectedGpIndex === -1) {
       selectedGpIndex = activeGpIndex;
-      renderActiveGP(selectedGpIndex);
     }
     
-    renderUpcomingList(detectedActiveGpIndex, selectedGpIndex);
-    
-    // Smooth scroll the selected GP card into view initially
-    setTimeout(() => {
-      const selectedEl = document.querySelector('.upcoming-gp-item.selected');
-      if (selectedEl) {
-        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }, 150);
+    renderGPCards();
   }
-  
-  updateCountdowns();
 }
 
 // ==========================================================================
-// 4. LIVE MEDIA PLAYER LOGIC
+// 5. LIVE MEDIA PLAYER & TOGGLER
 // ==========================================================================
 
 let mediaTimeline = {
@@ -627,9 +529,8 @@ function updateTimelineUI(position, duration) {
   }
 }
 
-// Initialize Wallpaper Engine Media Listeners
 function setupMediaListeners() {
-  // Title & Artist properties
+  // Title / Artist listener
   window.wallpaperRegisterMediaPropertiesListener((event) => {
     const placeholder = document.getElementById('media-placeholder-id');
     const content = document.getElementById('media-content-id');
@@ -654,7 +555,7 @@ function setupMediaListeners() {
     }
   });
 
-  // Album Artwork
+  // Track Art thumbnail listener
   window.wallpaperRegisterMediaThumbnailListener((event) => {
     const art = document.getElementById('media-album-art');
     if (event.thumbnail) {
@@ -664,7 +565,7 @@ function setupMediaListeners() {
     }
   });
 
-  // Track position timeline
+  // Timeline seek position listener
   window.wallpaperRegisterMediaTimelineListener((event) => {
     mediaTimeline.position = event.position;
     mediaTimeline.duration = event.duration;
@@ -675,7 +576,7 @@ function setupMediaListeners() {
   });
 }
 
-// High frequency position interpolation (runs every 250ms for smooth motion)
+// Tick song progress bar every 250ms
 setInterval(() => {
   if (mediaTimeline.duration > 0 && !mediaTimeline.paused) {
     const elapsed = (Date.now() - mediaTimeline.lastUpdate) / 1000;
@@ -685,7 +586,7 @@ setInterval(() => {
 }, 250);
 
 // ==========================================================================
-// 5. AUDIO VISUALIZER LOGIC
+// 6. AUDIO VISUALIZER DRAW LOOP
 // ==========================================================================
 
 const canvas = document.getElementById('audio-visualizer-canvas');
@@ -696,17 +597,15 @@ let smoothedValues = new Array(64).fill(0);
 
 function resizeCanvas() {
   canvas.width = window.innerWidth;
-  canvas.height = 130;
+  canvas.height = 120;
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Register Audio Listener
 window.wallpaperRegisterAudioListener((audioArray) => {
   audioArrayCache = audioArray;
 });
 
-// Animation loop rendering at screen refresh rate
 function drawVisualizer() {
   requestAnimationFrame(drawVisualizer);
   
@@ -716,22 +615,19 @@ function drawVisualizer() {
   const barSpacing = 4;
   const totalBars = 64;
   
-  // Apply a decay coefficient for organic drop-down physics
   const decay = 0.85;
   for (let i = 0; i < totalBars; i++) {
-    // Average left and right channel frequencies
     let rawVal = (audioArrayCache[i] + audioArrayCache[i + totalBars]) / 2;
     
-    // Treble frequencies naturally register lower amplitudes; apply linear boost
     let boost = 1.0 + (i / totalBars) * 3.0;
-    let val = rawVal * boost * 120; // Scale to pixel heights
+    let val = rawVal * boost * 110;
     
     val = Math.min(val, canvas.height - 10);
     
     if (val > smoothedValues[i]) {
-      smoothedValues[i] = val; // Instant snap up
+      smoothedValues[i] = val;
     } else {
-      smoothedValues[i] = smoothedValues[i] * decay + val * (1 - decay); // Damped glide down
+      smoothedValues[i] = smoothedValues[i] * decay + val * (1 - decay);
     }
   }
   
@@ -741,23 +637,20 @@ function drawVisualizer() {
   ctx.shadowBlur = 15;
   ctx.shadowColor = primaryColor;
   
-  // Dynamic gradient from bottom transparent to top accent color
   const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
   gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
   gradient.addColorStop(0.5, primaryColor);
-  gradient.addColorStop(1, 'rgba(255, 255, 255, 0.5)');
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0.45)');
   ctx.fillStyle = gradient;
   
   for (let i = 0; i < totalBars; i++) {
     let barHeight = smoothedValues[i];
-    if (barHeight < 3) barHeight = 3; // Static baseline glow even when silent
+    if (barHeight < 3) barHeight = 3; // Baseline glowing spacer
     
-    // Draw Right Symmetrical Wing
     let rx = centerX + i * (barWidth + barSpacing);
     let ry = canvas.height - barHeight;
     ctx.fillRect(rx, ry, barWidth, barHeight);
     
-    // Draw Left Symmetrical Wing
     let lx = centerX - i * (barWidth + barSpacing) - barWidth;
     let ly = canvas.height - barHeight;
     ctx.fillRect(lx, ly, barWidth, barHeight);
@@ -765,12 +658,9 @@ function drawVisualizer() {
 }
 
 // ==========================================================================
-// 6. WALLPAPER ENGINE PROPERTY CUSTOMIZATIONS
+// 7. WALLPAPER CUSTOMIZATION CONTROLS
 // ==========================================================================
 
-/**
- * Convert floats R G B (Wallpaper Engine format) to standard RGB/Hex format
- */
 function parseWallpaperColor(val) {
   if (!val) return '#AF69EF';
   if (val.indexOf(' ') !== -1) {
@@ -785,9 +675,6 @@ function parseWallpaperColor(val) {
   return val;
 }
 
-/**
- * Breakdown color strings into RGB channels for alpha calculations in CSS
- */
 function extractRgbChannels(colorStr) {
   if (colorStr.startsWith('rgb')) {
     const match = colorStr.match(/\d+/g);
@@ -804,61 +691,166 @@ function extractRgbChannels(colorStr) {
     const b = parseInt(hex.substring(4, 6), 16);
     return [r, g, b];
   }
-  return [175, 105, 239]; // Fallback Orchid channels
+  return [175, 105, 239];
 }
 
-// Setup PropertyListener
+// Set up Wallpaper Engine listener hook
 window.wallpaperPropertyListener = {
   applyUserProperties: function(properties) {
-    // 1. Accent Color
+    // Theme Accent
     if (properties.primarycolor) {
       const color = parseWallpaperColor(properties.primarycolor.value);
       document.documentElement.style.setProperty('--primary-color', color);
       
       const channels = extractRgbChannels(color);
       document.documentElement.style.setProperty('--primary-color-rgb', `${channels[0]}, ${channels[1]}, ${channels[2]}`);
+      
+      // Update color picker dot highlights
+      updateColorPickerHighlights(color);
     }
     
-    // 2. Audio Visualizer Display State
+    // Toggle Audio Visualizer
     if (properties.showvisualizer) {
       const showVal = properties.showvisualizer.value;
       const visCanvas = document.getElementById('audio-visualizer-canvas');
-      if (showVal) {
-        visCanvas.style.display = 'block';
-      } else {
-        visCanvas.style.display = 'none';
-      }
+      visCanvas.style.display = showVal ? 'block' : 'none';
     }
     
-    // 3. Audio Visualizer Opacity
+    // Opacity Visualizer
     if (properties.visualizeropacity) {
       const opacityVal = properties.visualizeropacity.value / 100;
       const visCanvas = document.getElementById('audio-visualizer-canvas');
       visCanvas.style.opacity = opacityVal;
     }
-    
-    // 4. Clock format (12h vs 24h)
-    if (properties.clockformat) {
-      isClock24h = properties.clockformat.value === '24h';
-      updateClock();
-    }
   }
 };
 
+/**
+ * Highlight matching preset color dot on external properties updates
+ */
+function updateColorPickerHighlights(currentColor) {
+  const dots = document.querySelectorAll('.color-dot');
+  const rgbTarget = extractRgbChannels(currentColor).join(',');
+  
+  dots.forEach(dot => {
+    const dotColor = dot.dataset.color;
+    const dotRgb = extractRgbChannels(dotColor).join(',');
+    
+    if (dotRgb === rgbTarget) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
+}
+
 // ==========================================================================
-// 7. BOOTSTRAP / INITIALIZATION
+// 8. INTERACTIVE CLICK HANDLERS
 // ==========================================================================
 
-// DO NOT wrap listeners in window.onload per Wallpaper Engine specifications
-// Trigger clock and schedule tick loops
-setInterval(updateClock, 1000);
-updateClock();
+function setupUIEventListeners() {
+  const prevBtn = document.getElementById('prev-gp-btn');
+  const nextBtn = document.getElementById('next-gp-btn');
+  const view1Btn = document.getElementById('view-1-btn');
+  const view3Btn = document.getElementById('view-3-btn');
+  const mediaToggleBtn = document.getElementById('media-toggle-btn');
+  const mediaPanel = document.getElementById('media-panel');
+  const colorDots = document.querySelectorAll('.color-dot');
+  const cardsContainer = document.getElementById('f1-cards-container');
+  
+  // Previous Arrow
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (selectedGpIndex > 0) {
+        selectedGpIndex--;
+        renderGPCards();
+      }
+    });
+  }
+  
+  // Next Arrow
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const numCards = viewMode === '3-cards' ? 3 : 1;
+      if (selectedGpIndex < f1Schedule2026.length - numCards) {
+        selectedGpIndex++;
+        renderGPCards();
+      }
+    });
+  }
+  
+  // 1-Card View Mode Toggle
+  if (view1Btn) {
+    view1Btn.addEventListener('click', () => {
+      if (viewMode !== '1-card') {
+        viewMode = '1-card';
+        view1Btn.classList.add('active');
+        view3Btn.classList.remove('active');
+        
+        cardsContainer.className = 'cards-container view-1-cards';
+        renderGPCards();
+      }
+    });
+  }
+  
+  // 3-Cards View Mode Toggle
+  if (view3Btn) {
+    view3Btn.addEventListener('click', () => {
+      if (viewMode !== '3-cards') {
+        viewMode = '3-cards';
+        view3Btn.classList.add('active');
+        view1Btn.classList.remove('active');
+        
+        cardsContainer.className = 'cards-container view-3-cards';
+        renderGPCards();
+      }
+    });
+  }
+  
+  // Media Player Widget Toggler
+  if (mediaToggleBtn && mediaPanel) {
+    mediaToggleBtn.addEventListener('click', () => {
+      if (mediaPanel.classList.contains('media-hidden')) {
+        mediaPanel.classList.remove('media-hidden');
+        mediaPanel.classList.add('media-visible');
+        mediaToggleBtn.classList.add('active');
+      } else {
+        mediaPanel.classList.remove('media-visible');
+        mediaPanel.classList.add('media-hidden');
+        mediaToggleBtn.classList.remove('active');
+      }
+    });
+  }
+  
+  // Interactive Color Dots Custom Themer
+  colorDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      colorDots.forEach(d => d.classList.remove('active'));
+      dot.classList.add('active');
+      
+      const chosenColor = dot.dataset.color;
+      document.documentElement.style.setProperty('--primary-color', chosenColor);
+      
+      const channels = extractRgbChannels(chosenColor);
+      document.documentElement.style.setProperty('--primary-color-rgb', `${channels[0]}, ${channels[1]}, ${channels[2]}`);
+    });
+  });
+}
 
+// ==========================================================================
+// 9. INITIALIZATION
+// ==========================================================================
+
+// Trigger loops immediately
 initF1Schedule();
-// Refresh GP schedule index mapping every minute
+// Keep paged card elements rendering updates
 setInterval(initF1Schedule, 60000);
-// Update F1 countdowns every second
-setInterval(updateCountdowns, 1000);
 
+// Tick timers every second
+setInterval(updateCountdowns, 1000);
+updateCountdowns();
+
+// Setup callbacks
+setupUIEventListeners();
 setupMediaListeners();
 drawVisualizer();
