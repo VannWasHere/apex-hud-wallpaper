@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sleek Formula 1 race calendar dashboard and live Windows media progress widget with audio visualizer for Wallpaper Engine.">
+  <title>F1 Racing Dashboard &amp; Media Hub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow" id="ambient-glow-bg"></div>
+  <div class="grid-overlay"></div>
+
+  <!-- Main Grid Layout -->
+  <main class="dashboard-container">
+    
+    <!-- Top-Right Panel: F1 Schedule & Clock -->
+    <section class="panel top-right-panel" id="f1-panel" aria-label="F1 Schedule and Time">
+      
+      <!-- Monospace Digital Clock -->
+      <header class="clock-container" id="clock-container-id">
+        <h1 class="digital-time" id="digital-clock" aria-live="off">00:00:00</h1>
+        <div class="date-display" id="date-display">Friday, July 3, 2026</div>
+      </header>
+
+      <hr class="separator">
+
+      <!-- Active Grand Prix Details (Detailed Countdown) -->
+      <article class="active-gp-card" id="active-gp-card-id">
+        <div class="active-gp-header">
+          <div class="gp-meta">
+            <span class="round-badge" id="active-round">ROUND 9</span>
+            <h2 class="gp-country" id="active-country">Great Britain</h2>
+            <div class="gp-track" id="active-track">Silverstone Circuit</div>
+          </div>
+          <img class="country-flag" id="active-flag" src="https://flagcdn.com/gb.svg" alt="United Kingdom Flag" crossorigin="anonymous">
+        </div>
+
+        <div class="sessions-container" id="active-sessions-list">
+          <!-- Dynamically populated in script.js -->
+        </div>
+      </article>
+
+      <hr class="separator">
+
+      <!-- Scrollable Upcoming Races List -->
+      <section class="upcoming-races-section" id="upcoming-races-section-id">
+        <h3 class="section-title">2026 Season Calendar</h3>
+        <div class="upcoming-races-list" id="upcoming-races-list-container">
+          <!-- Dynamically populated in script.js -->
+        </div>
+      </section>
+    </section>
+
+    <!-- Bottom-Right Panel: Live Media Player Widget -->
+    <section class="panel bottom-right-panel waiting-media" id="media-panel" aria-label="Media Player">
+      
+      <!-- Awaiting Media Placeholder -->
+      <div class="media-placeholder" id="media-placeholder-id">
+        <div class="music-wave">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p>Awaiting System Media...</p>
+      </div>
+
+      <!-- Active Media Player Content -->
+      <div class="media-content hidden" id="media-content-id">
+        <div class="thumbnail-wrapper">
+          <img class="album-art" id="media-album-art" src="" alt="Album Artwork" crossorigin="anonymous">
+          <div class="art-overlay"></div>
+        </div>
+        
+        <div class="media-details">
+          <div class="track-title-container">
+            <h2 class="track-title" id="media-title">Track Name</h2>
+          </div>
+          <div class="track-artist-container">
+            <p class="track-artist" id="media-artist">Artist Name</p>
+          </div>
+          
+          <div class="progress-bar-container" id="media-timeline-container">
+            <span class="time-label current-time" id="media-time-current">0:00</span>
+            <div class="timeline-track" id="media-timeline-track">
+              <div class="timeline-fill" id="media-timeline-fill"></div>
+            </div>
+            <span class="time-label total-time" id="media-time-total">0:00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Background Canvas Audio Visualizer -->
+    <canvas class="visualizer-canvas" id="audio-visualizer-canvas" width="1920" height="150"></canvas>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

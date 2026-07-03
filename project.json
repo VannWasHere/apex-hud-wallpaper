@@ -1,0 +1,28 @@
+{
+  "title": "F1 Hub & Media Visualizer",
+  "description": "A sleek dark F1 Schedule hub with countdowns, live Windows media controls, and an audio visualizer.",
+  "file": "index.html",
+  "type": "web",
+  "general": {
+    "properties": {
+      "primarycolor": {
+        "text": "Theme Accent Color",
+        "type": "color",
+        "value": "0.686 0.411 0.937"
+      },
+      "showvisualizer": {
+        "text": "Show Audio Visualizer",
+        "type": "bool",
+        "value": true
+      },
+      "visualizeropacity": {
+        "text": "Visualizer Opacity (%)",
+        "type": "slider",
+        "min": 10,
+        "max": 100,
+        "step": 5,
+        "value": 40
+      }
+    }
+  }
+}
