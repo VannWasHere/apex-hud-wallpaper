@@ -503,12 +503,14 @@ setInterval(function() {
 
 const cvs = document.getElementById('audio-visualizer-canvas');
 const cx = cvs.getContext('2d');
+const VIS_BARS = 96;
 let audioArray = new Array(128).fill(0);
-let smoothBars = new Array(64).fill(0);
+let smoothBars = new Array(VIS_BARS).fill(0);
+let idlePhase = 0;
 
 function resizeCanvas() {
   cvs.width = window.innerWidth;
-  cvs.height = 120;
+  cvs.height = 260;
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
@@ -519,35 +521,100 @@ if (typeof window.wallpaperRegisterAudioListener === 'function') {
   });
 }
 
+// --- Smooth (.75s) color transition whenever the accent color changes ---
+const VIS_COLOR_TRANSITION_MS = 750;
+let visColorFrom = [175, 105, 239];
+let visColorTo = [175, 105, 239];
+let visColorStart = 0;
+let lastVisHex = null;
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function getTransitionedColor(now) {
+  const t = Math.min(1, (now - visColorStart) / VIS_COLOR_TRANSITION_MS);
+  const eased = t < 1 ? 1 - Math.pow(1 - t, 3) : 1; // ease-out cubic
+  const r = Math.round(lerp(visColorFrom[0], visColorTo[0], eased));
+  const g = Math.round(lerp(visColorFrom[1], visColorTo[1], eased));
+  const b = Math.round(lerp(visColorFrom[2], visColorTo[2], eased));
+  return [r, g, b];
+}
+
 function drawVisualizer() {
   requestAnimationFrame(drawVisualizer);
+
+  const now = performance.now();
+
+  // Detect accent color changes and kick off a fresh .75s interpolation.
+  const hex = getComputedStyle(document.documentElement).getPropertyValue('--visualizer-color').trim() || '#AF69EF';
+  if (hex !== lastVisHex) {
+    visColorFrom = getTransitionedColor(now); // continue smoothly from wherever we currently are
+    visColorTo = extractRgb(hex);
+    visColorStart = now;
+    lastVisHex = hex;
+  }
+  const [r, g, b] = getTransitionedColor(now);
+  const col = `rgb(${r}, ${g}, ${b})`;
+
   cx.clearRect(0, 0, cvs.width, cvs.height);
 
-  const barWidth = 4, spacing = 3, bars = 64, decay = 0.82;
+  const barWidth = 5, spacing = 3, bars = VIS_BARS, decay = 0.8;
+  const hasAudio = audioArray.some(v => v > 0.01);
+  idlePhase += 0.045;
 
   for (let i = 0; i < bars; i++) {
-    let val = ((audioArray[i] || 0) + (audioArray[i + 64] || 0)) / 2;
-    val = val * (1 + (i / bars) * 2.5) * 100;
-    val = Math.min(val, cvs.height - 6);
+    let val;
+    if (hasAudio) {
+      val = ((audioArray[i % 64] || 0) + (audioArray[(i % 64) + 64] || 0)) / 2;
+      val = val * (1 + (i / bars) * 3.2) * 190;
+    } else {
+      // Gentle idle shimmer so the visualizer still feels alive when silent.
+      val = (Math.sin(idlePhase + i * 0.35) * 0.5 + 0.5) * 10;
+    }
+    val = Math.min(val, cvs.height - 10);
     smoothBars[i] = val > smoothBars[i] ? val : smoothBars[i] * decay + val * (1 - decay);
   }
 
   const mid = cvs.width / 2;
-  const col = getComputedStyle(document.documentElement).getPropertyValue('--visualizer-color').trim() || '#AF69EF';
-  cx.shadowBlur = 12;
+  cx.shadowBlur = 22;
   cx.shadowColor = col;
 
   const grad = cx.createLinearGradient(0, cvs.height, 0, 0);
   grad.addColorStop(0, 'rgba(0,0,0,0)');
-  grad.addColorStop(0.4, col);
-  grad.addColorStop(1, 'rgba(255,255,255,0.3)');
+  grad.addColorStop(0.35, col);
+  grad.addColorStop(0.75, col);
+  grad.addColorStop(1, 'rgba(255,255,255,0.4)');
   cx.fillStyle = grad;
 
   for (let i = 0; i < bars; i++) {
-    const h = Math.max(smoothBars[i], 1.5);
-    cx.fillRect(mid + i * (barWidth + spacing), cvs.height - h, barWidth, h);
-    cx.fillRect(mid - i * (barWidth + spacing) - barWidth, cvs.height - h, barWidth, h);
+    const h = Math.max(smoothBars[i], 2);
+    const x1 = mid + i * (barWidth + spacing);
+    const x2 = mid - i * (barWidth + spacing) - barWidth;
+    cx.beginPath();
+    cx.roundRect(x1, cvs.height - h, barWidth, h, 3);
+    cx.fill();
+    cx.beginPath();
+    cx.roundRect(x2, cvs.height - h, barWidth, h, 3);
+    cx.fill();
   }
+
+  // Soft mirrored reflection beneath the baseline for extra depth.
+  cx.save();
+  cx.globalAlpha = 0.18;
+  cx.shadowBlur = 0;
+  cx.scale(1, -0.28);
+  cx.translate(0, -2 * cvs.height - 4);
+  for (let i = 0; i < bars; i++) {
+    const h = Math.max(smoothBars[i], 2);
+    const x1 = mid + i * (barWidth + spacing);
+    const x2 = mid - i * (barWidth + spacing) - barWidth;
+    cx.beginPath();
+    cx.roundRect(x1, cvs.height - h, barWidth, h, 3);
+    cx.fill();
+    cx.beginPath();
+    cx.roundRect(x2, cvs.height - h, barWidth, h, 3);
+    cx.fill();
+  }
+  cx.restore();
 }
 
 // ==========================================================================
