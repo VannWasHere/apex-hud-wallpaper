@@ -210,8 +210,9 @@ const countryToFlagCode = {
   "Abu Dhabi": "ae" // United Arab Emirates flag
 };
 
-// Track the current active Grand Prix index in the calendar array
-let currentActiveGpIndex = -1;
+// Track indices for auto-detected active GP and user-selected GP
+let detectedActiveGpIndex = -1;
+let selectedGpIndex = -1;
 
 // Global settings
 let isClock24h = true;
@@ -304,7 +305,7 @@ function getSessionDuration(sessionName) {
  * Render the main active GP card and sessions
  */
 function renderActiveGP(gpIndex) {
-  currentActiveGpIndex = gpIndex;
+  selectedGpIndex = gpIndex;
   const gp = f1Schedule2026[gpIndex];
   
   document.getElementById('active-round').textContent = `ROUND ${gp.round}`;
@@ -350,31 +351,38 @@ function renderActiveGP(gpIndex) {
 }
 
 /**
- * Render scrollable list of upcoming races
+ * Render scrollable list of all races in the season
  */
-function renderUpcomingList(activeGpIndex) {
+function renderUpcomingList(detectedActiveIdx, selectedIdx) {
   const listContainer = document.getElementById('upcoming-races-list-container');
   listContainer.innerHTML = '';
   
-  const upcomingGps = f1Schedule2026.slice(activeGpIndex + 1);
-  
-  if (upcomingGps.length === 0) {
-    const endMsg = document.createElement('p');
-    endMsg.className = 'gp-item-subtitle';
-    endMsg.style.textAlign = 'center';
-    endMsg.style.padding = '20px';
-    endMsg.textContent = 'End of 2026 Season';
-    listContainer.appendChild(endMsg);
-    return;
-  }
-  
-  upcomingGps.forEach((gp) => {
+  f1Schedule2026.forEach((gp, index) => {
     const item = document.createElement('div');
     item.className = 'upcoming-gp-item';
+    
+    // Highlight the selected item
+    if (index === selectedIdx) {
+      item.classList.add('selected');
+    }
+    
+    // Dim past races
+    const now = new Date();
+    const raceTime = new Date(gp.sessions["Race"]);
+    const isPast = now.getTime() >= (raceTime.getTime() + 3.0 * 60 * 60 * 1000);
+    if (isPast) {
+      item.classList.add('past');
+    }
     
     const leftDiv = document.createElement('div');
     leftDiv.className = 'gp-item-left';
     
+    // Round badge
+    const roundSpan = document.createElement('span');
+    roundSpan.className = 'gp-item-round';
+    roundSpan.textContent = `R${String(gp.round).padStart(2, '0')}`;
+    
+    // Flag
     const flagCode = countryToFlagCode[gp.country] || "un";
     const flagImg = document.createElement('img');
     flagImg.className = 'gp-item-flag';
@@ -382,28 +390,86 @@ function renderUpcomingList(activeGpIndex) {
     flagImg.alt = `${gp.country} Flag`;
     flagImg.crossOrigin = "anonymous";
     
+    // Details
     const metaDiv = document.createElement('div');
     metaDiv.className = 'gp-item-meta';
+    
+    const titleRow = document.createElement('div');
+    titleRow.className = 'gp-item-title-row';
     
     const titleSpan = document.createElement('span');
     titleSpan.className = 'gp-item-title';
     titleSpan.textContent = gp.country;
     
+    const formatSpan = document.createElement('span');
+    formatSpan.className = `gp-item-format ${gp.format}`;
+    formatSpan.textContent = gp.format;
+    
+    titleRow.appendChild(titleSpan);
+    titleRow.appendChild(formatSpan);
+    
     const subtitleSpan = document.createElement('span');
     subtitleSpan.className = 'gp-item-subtitle';
     subtitleSpan.textContent = gp.track;
     
-    metaDiv.appendChild(titleSpan);
+    metaDiv.appendChild(titleRow);
     metaDiv.appendChild(subtitleSpan);
+    
+    leftDiv.appendChild(roundSpan);
     leftDiv.appendChild(flagImg);
     leftDiv.appendChild(metaDiv);
     
+    const rightDiv = document.createElement('div');
+    rightDiv.className = 'gp-item-right';
+    
+    // Date
     const dateDiv = document.createElement('div');
     dateDiv.className = 'gp-item-date';
     dateDiv.textContent = formatDateRange(gp.sessions);
     
+    // Status Badge
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'gp-item-status-badge';
+    
+    if (index === detectedActiveIdx) {
+      // Check if any session of the current weekend is live right now
+      let isLive = false;
+      Object.keys(gp.sessions).forEach((sName) => {
+        const sTime = new Date(gp.sessions[sName]);
+        const diff = sTime.getTime() - now.getTime();
+        const duration = getSessionDuration(sName);
+        if (diff <= 0 && Math.abs(diff) < duration) {
+          isLive = true;
+        }
+      });
+      
+      if (isLive) {
+        statusSpan.textContent = 'LIVE';
+        statusSpan.classList.add('live');
+      } else {
+        statusSpan.textContent = 'NEXT';
+        statusSpan.classList.add('next');
+      }
+    } else if (isPast) {
+      statusSpan.textContent = 'DONE';
+      statusSpan.classList.add('done');
+    } else {
+      statusSpan.textContent = 'UPCOMING';
+      statusSpan.classList.add('upcoming');
+    }
+    
+    rightDiv.appendChild(dateDiv);
+    rightDiv.appendChild(statusSpan);
+    
     item.appendChild(leftDiv);
-    item.appendChild(dateDiv);
+    item.appendChild(rightDiv);
+    
+    // Click listener to dynamically switch the displayed race details
+    item.addEventListener('click', () => {
+      renderActiveGP(index);
+      renderUpcomingList(detectedActiveGpIndex, selectedGpIndex);
+    });
+    
     listContainer.appendChild(item);
   });
 }
@@ -429,9 +495,9 @@ function formatCountdown(diffMs) {
  * Primary countdown update loop (ticks once per second)
  */
 function updateCountdowns() {
-  if (currentActiveGpIndex === -1) return;
+  if (selectedGpIndex === -1) return;
   
-  const gp = f1Schedule2026[currentActiveGpIndex];
+  const gp = f1Schedule2026[selectedGpIndex];
   const now = new Date();
   
   // Track the next upcoming session details
@@ -506,10 +572,25 @@ function initF1Schedule() {
     activeGpIndex = f1Schedule2026.length - 1; // Default to last round if season is over
   }
   
-  // Only rebuild DOM if active GP shifts
-  if (activeGpIndex !== currentActiveGpIndex) {
-    renderActiveGP(activeGpIndex);
-    renderUpcomingList(activeGpIndex);
+  // If the detected active GP changes (or on initial load)
+  if (activeGpIndex !== detectedActiveGpIndex) {
+    detectedActiveGpIndex = activeGpIndex;
+    
+    // Only auto-select active GP if the user hasn't chosen one
+    if (selectedGpIndex === -1) {
+      selectedGpIndex = activeGpIndex;
+      renderActiveGP(selectedGpIndex);
+    }
+    
+    renderUpcomingList(detectedActiveGpIndex, selectedGpIndex);
+    
+    // Smooth scroll the selected GP card into view initially
+    setTimeout(() => {
+      const selectedEl = document.querySelector('.upcoming-gp-item.selected');
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 150);
   }
   
   updateCountdowns();
