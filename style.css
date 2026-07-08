@@ -127,6 +127,85 @@ body.motif-waves .aurora {
   animation: waveShift 22s ease-in-out infinite;
 }
 
+/* ===== TOP-LEFT PHOTO FRAME (futuristic HUD style) ===== */
+.love-frame {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  width: 260px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  z-index: 8;
+  transition: border-color var(--transition-color);
+}
+
+.love-frame-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--primary-color);
+  transition: border-color var(--transition-color);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.love-frame-corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+.love-frame-corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+.love-frame-corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+.love-frame-corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+
+.love-photo-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(var(--primary-color-rgb), 0.25);
+  background: rgba(0,0,0,0.3);
+}
+
+.love-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  filter: saturate(1.05) contrast(1.03);
+}
+
+/* Subtle scanning sweep for a sci-fi HUD feel */
+.love-scanline {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(var(--primary-color-rgb), 0.18) 48%, transparent 100%);
+  background-size: 100% 220%;
+  animation: scanSweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+  transition: background var(--transition-color);
+}
+
+.love-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 9px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  transition: color var(--transition-color);
+}
+
+.love-caption-bracket {
+  opacity: 0.55;
+  font-weight: 300;
+}
+
+.love-caption-text {
+  filter: drop-shadow(0 0 8px rgba(var(--primary-color-rgb), 0.4));
+}
+
 /* ===== CENTER CLOCK ===== */
 .center-clock-wrap {
   position: fixed;
@@ -802,4 +881,10 @@ body.motif-waves .aurora {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes scanSweep {
+  0%   { background-position: 0% -60%; }
+  50%  { background-position: 0% 60%; }
+  100% { background-position: 0% -60%; }
 }
